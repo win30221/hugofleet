@@ -657,7 +657,7 @@ M1 API／controller 與 M2 Hub 套件跨階段共用，不放在會阻止跨階�
 - 可查 `pricing-api` 版本與價格計算結果。
 - `make test-unit` 全綠。
 - `v1` / `v2-good` rollout 完成，真實 `/version` 與 `/quote` 結果正確；`v2-broken` 程序存活、readiness 失敗、新 rollout 回報 ProgressDeadlineExceeded。
-- 基礎 CI 定義已建立；本機執行結果與尚未在 GitHub 執行的 CI 分開報告。
+- 基礎 CI 定義已建立；本機與 GitHub Hosted CI 的實際執行結果分開報告，最新狀態見 [完整驗證紀錄](docs/release-validation-20261014.md)。
 
 ### M1 — 核心 Kubernetes Operator（第一個重要里程碑）
 

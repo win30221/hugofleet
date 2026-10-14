@@ -4,7 +4,7 @@
 
 2026-10-11～12 已依使用者授權完成 M0～M3 重新驗證，並從本頁核對當時全部 15 份正式 README。四階段正式 E2E 與各階段教學主流程均通過，結果與修正見 [搬移後重新驗證](docs/revalidation-20261011.md)。2026-10-14 已完成 M4／M5 的真實程式與正式本機驗收、最新 M1～M4 回歸及瀏覽器流程；目前共 22 份正式 README。M5 包含 Dashboard、trace／metrics、Helm 與實際 Demo 素材，結果、修正與限制見 [M4 紀錄](docs/m4-validation.md)／[M5 紀錄](docs/m5-validation.md)。本次修正後的完整重驗與 Hosted CI 狀態見下方最新紀錄。
 
-2026-10-14 先前以本機可用與測試通過為範圍的交付已完成。使用者接著授權修正 [M0～M5 稽核問題](docs/audit-m0-m5-20261014.md)、完整重驗文件與流程，全部本機驗證成功後提交、推送並實際驗證 GitHub Actions。本次進度與結果見 [修正與完整驗證紀錄](docs/release-validation-20261014.md)；Hosted CI 的 T18 仍須取得遠端實測結果才能列為通過。
+2026-10-15 已完成 [M0～M5 稽核問題](docs/audit-m0-m5-20261014.md) 修正、文件與流程重驗，並提交、推送至 GitHub。第二輪 Hosted CI 的 Unit／race、envtest、OIDC 與 M0～M5 共九個 jobs 全部通過，T18 遠端驗收完成。測試提交、首次失敗原因、修正與限制見 [完整驗證紀錄](docs/release-validation-20261014.md)。
 
 | 想學什麼 | 文件與程式位置 |
 |---|---|
