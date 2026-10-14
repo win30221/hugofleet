@@ -37,7 +37,7 @@ Unit／HTTP 測試涵蓋價格計算順序、取整、上限／負數／缺值�
 ## 最終 kind E2E 證據
 
 - 命令：`make test-e2e`，Ubuntu WSL2，2026-10-11 06:00–06:16（Asia/Taipei）；exit 0。
-- 產物：[`artifacts/m0-e2e/20261011T060031-257733/run.log`](../artifacts/m0-e2e/20261011T060031-257733/run.log)，忽略提交；包含每一步 HTTP／Kubernetes assertion。
+- 本機產物：`artifacts/m0-e2e/20261011T060031-257733/run.log`，忽略提交，因此乾淨 checkout 不包含此檔案；原始日誌包含每一步 HTTP／Kubernetes assertion。
 - v1、v2-good：Deployment rollout 成功；`/version`、`/healthz`、`/readyz` 正確，`/quote` 完整回應為 20,000／2,000／10,000／8,000 分。
 - v2-broken：直接 Pod HTTP 確認 health 200、ready 503、version 正確、quote 8,000；Deployment `ProgressDeadlineExceeded`、Pod Ready=false、restartCount=0。
 - Service：EndpointSlice 保留 Ready endpoints，排除 Broken Pod；原有 v2-good HTTP 仍通過。

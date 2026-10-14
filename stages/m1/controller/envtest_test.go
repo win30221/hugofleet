@@ -116,6 +116,9 @@ func TestEnvtest(t *testing.T) {
 			}
 		}
 	})
+	t.Run("workload conflicts retry without terminal status", func(t *testing.T) {
+		testWorkloadConflicts(t, ctx, c, scheme, newApp)
+	})
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{Scheme: scheme, Cache: cache.Options{DefaultNamespaces: map[string]cache.Config{"hf-demo": {}}}, Metrics: metricsserver.Options{BindAddress: "0"}, HealthProbeBindAddress: "0"})
 	if err != nil {
 		t.Fatal(err)

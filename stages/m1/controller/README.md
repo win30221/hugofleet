@@ -44,6 +44,8 @@ CR 要 2 個副本，你只把 Deployment spec.replicas 改成 1。owned Deploym
 
 同值 Reconcile 不需要反覆寫入。CreateOrUpdate 比對資源；patchStatus 以語意相等檢查跳過相同 status，改動時使用樂觀鎖，避免無意覆蓋同時更新。
 
+Deployment／Service 若在讀取後被其他控制器更新，API server 會拒絕過期 resourceVersion。Operator 將此衝突交回 workqueue 重試，不寫入 Degraded；下一次重新讀取後收斂，避免 Hub 將暫時競爭誤判為永久部署失敗。資源 ownership 衝突仍回報 OwnershipConflict，不接管外部物件。
+
 ## Ready 判斷比「有 Pod」嚴格
 
 rolloutStatus 先比對完整受管理的 Deployment spec、UID label 與 revision annotation。revision 也寫入 Pod template；每個新 revision 有自己的 rollout，相同 revision 重送則不重建 template。Deployment controller 必須已觀測目前 dep.Generation，才推進 observedRevision／image。

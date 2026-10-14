@@ -121,6 +121,12 @@ func (r *ApplicationReconciler) Reconcile(parent context.Context, req ctrl.Reque
 		})
 	}
 	if err != nil {
+		// Another controller may update the workload after our read. Let the
+		// workqueue retry with fresh state; Degraded would terminally fail the
+		// Hub operation before that retry can converge.
+		if apierrors.IsConflict(err) {
+			return ctrl.Result{}, err
+		}
 		var conflict *ownershipConflict
 		if errors.As(err, &conflict) {
 			return r.problem(ctx, &app, "OwnershipConflict", err.Error(), true)
