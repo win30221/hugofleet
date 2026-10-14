@@ -1,0 +1,7 @@
+{
+  "name": "pricing-a",
+  "cluster_id": "hugofleet-a",
+  "expected_desired_revision": 0,
+  "image": "pricing-api:v1",
+  "replicas": 1
+}

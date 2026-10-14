@@ -1,0 +1,386 @@
+openapi: 3.0.3
+info:
+  title: HugoFleet M2/M3 development Hub
+  version: 0.3.0
+  description: >-
+    Go-only local development API for tenant demo. M2 uses cluster local-kind;
+    M3 uses registered outbound mTLS Agents (hugofleet-a/b) and REQUIRES a Demo Bearer Token.
+    M2 loopback mode has no token requirement. No OIDC. All timestamps are Unix milliseconds; zero means unobserved.
+    Deployments are asynchronous. A failed revision consumes its number.
+    Idempotency keys are tenant-scoped and hash the route, action and decoded request.
+    Identical requests return the same operation, including after completion.
+    Unknown JSON fields, trailing JSON and bodies over 64 KiB are rejected.
+servers:
+  - url: http://127.0.0.1:18090
+security:
+  - demoBearer: []
+  - {} # Only the explicit M2 loopback development mode permits no authentication.
+paths:
+  /healthz:
+    get:
+      security: []
+      operationId: health
+      responses:
+        '200': {description: Process is serving HTTP}
+  /readyz:
+    get:
+      security: []
+      operationId: readiness
+      responses:
+        '200': {description: SQLite and all configured cluster transports reachable}
+        '503': {$ref: '#/components/responses/Error'}
+  /api/v1/clusters:
+    get:
+      operationId: listClusters
+      responses:
+        '200':
+          description: Registered clusters with connectivity and last heartbeat (one in M2, two in M3)
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/Cluster'}}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/tenants:
+    get:
+      operationId: listTenants
+      responses:
+        '200':
+          description: Single bootstrapped development tenant
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/Tenant'}}
+        default: {$ref: '#/components/responses/Error'}
+    post:
+      operationId: createTenant
+      description: Reserved provisioning route; M2 uses bootstrap tenant demo. M4 enables tenant creation.
+      responses:
+        '403': {$ref: '#/components/responses/Error'}
+  /api/v1/tenants/{tenantId}/apps:
+    parameters:
+      - {$ref: '#/components/parameters/TenantId'}
+    get:
+      operationId: listApps
+      parameters:
+        - {$ref: '#/components/parameters/Limit'}
+        - name: after
+          in: query
+          schema: {type: string}
+          description: Exclusive Application ID cursor returned as next_after
+      responses:
+        '200':
+          description: ID-sorted bounded page; includes retained deleted applications
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_after]
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/Application'}}
+                  next_after: {type: string, description: Empty at end of list}
+        default: {$ref: '#/components/responses/Error'}
+    post:
+      operationId: createApp
+      parameters:
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateRequest'}
+            example: {name: pricing-api, cluster_id: local-kind, expected_desired_revision: 0, image: 'pricing-api:v1'}
+      responses:
+        '202': {$ref: '#/components/responses/Accepted'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/tenants/{tenantId}/apps/{appId}:
+    parameters:
+      - {$ref: '#/components/parameters/TenantId'}
+      - {$ref: '#/components/parameters/AppId'}
+    get:
+      operationId: getApp
+      parameters:
+        - {$ref: '#/components/parameters/Limit'}
+      responses:
+        '200':
+          description: Current application plus newest releases, operations and events, each bounded by limit
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Detail'}
+        default: {$ref: '#/components/responses/Error'}
+    delete:
+      operationId: deleteApp
+      description: Uses a durable operation, CR UID precondition and real GC confirmation. History retained; names cannot be reused.
+      parameters:
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expected_desired_revision]
+              properties:
+                expected_desired_revision: {type: integer, format: int64, minimum: 1}
+      responses:
+        '202': {$ref: '#/components/responses/Accepted'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/tenants/{tenantId}/apps/{appId}/releases:
+    parameters:
+      - {$ref: '#/components/parameters/TenantId'}
+      - {$ref: '#/components/parameters/AppId'}
+    post:
+      operationId: releaseApp
+      description: Full new configuration with defaults; partial patch semantics are not supported. Active operation or stale desired revision returns 409.
+      parameters:
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DeployRequest'}
+      responses:
+        '202': {$ref: '#/components/responses/Accepted'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/tenants/{tenantId}/apps/{appId}/rollback:
+    parameters:
+      - {$ref: '#/components/parameters/TenantId'}
+      - {$ref: '#/components/parameters/AppId'}
+    post:
+      operationId: rollbackApp
+      description: Copies an ACTIVE or SUPERSEDED snapshot into a new revision; failed source returns 409.
+      parameters:
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [target_revision, expected_desired_revision]
+              properties:
+                target_revision: {type: integer, format: int64, minimum: 1}
+                expected_desired_revision: {type: integer, format: int64, minimum: 1}
+      responses:
+        '202': {$ref: '#/components/responses/Accepted'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/operations/{operationId}:
+    get:
+      operationId: getOperation
+      parameters:
+        - name: operationId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Durable operation; TIMED_OUT, FAILED and SUCCEEDED are terminal
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Operation'}
+        default: {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    demoBearer:
+      type: http
+      scheme: bearer
+      description: Required in M3 for every management API request; generated local Demo token, not OIDC. M2 explicit loopback mode does not use this token.
+  parameters:
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      schema: {type: string, enum: [demo]}
+    AppId:
+      name: appId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    Limit:
+      name: limit
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 128}
+  responses:
+    Accepted:
+      description: Durable intent accepted; rollout has not necessarily succeeded
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Accepted'}
+    Error:
+      description: '400 invalid argument, 403 denied, 404 absent, 409 conflict, 422 resource policy, 503 offline, 500 internal'
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error:
+                type: object
+                required: [code, message, request_id]
+                properties:
+                  code: {type: string, enum: [INVALID_ARGUMENT, PERMISSION_DENIED, NOT_FOUND, CONFLICT, QUOTA_EXCEEDED, CLUSTER_OFFLINE, INTERNAL]}
+                  message: {type: string}
+                  request_id: {type: string, format: uuid}
+  schemas:
+    ResourceValues:
+      type: object
+      additionalProperties: false
+      properties:
+        cpu: {type: string, maxLength: 32, description: Positive Kubernetes quantity}
+        memory: {type: string, maxLength: 32, description: Positive Kubernetes quantity}
+    Resources:
+      type: object
+      additionalProperties: false
+      properties:
+        requests: {$ref: '#/components/schemas/ResourceValues'}
+        limits: {$ref: '#/components/schemas/ResourceValues'}
+    DeployRequest:
+      type: object
+      additionalProperties: false
+      required: [image, expected_desired_revision]
+      properties:
+        expected_desired_revision: {type: integer, format: int64, minimum: 0}
+        image: {type: string, minLength: 1, maxLength: 512, description: Lowercase Docker repository with optional tag or sha256 digest}
+        replicas: {type: integer, minimum: 0, maximum: 3, default: 1, description: Omitted or zero selects default 1}
+        port: {type: integer, minimum: 0, maximum: 65535, default: 8080, description: Omitted or zero selects default 8080}
+        resources: {$ref: '#/components/schemas/Resources'}
+        readiness_path: {type: string, maxLength: 256, default: /readyz, description: Local absolute path without query or host; empty selects default}
+        liveness_path: {type: string, maxLength: 256, default: /healthz, description: Local absolute path without query or host; empty selects default}
+    CreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, cluster_id, image, expected_desired_revision]
+      properties:
+        name: {type: string, maxLength: 63, pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'}
+        cluster_id: {type: string, description: 'Registered cluster ID; local-kind in M2, hugofleet-a/b in M3, an approved connected Worker profile in M4'}
+        expected_desired_revision: {type: integer, format: int64, enum: [0]}
+        image: {type: string, minLength: 1, maxLength: 512}
+        replicas: {type: integer, minimum: 0, maximum: 3, default: 1}
+        port: {type: integer, minimum: 0, maximum: 65535, default: 8080}
+        resources: {$ref: '#/components/schemas/Resources'}
+        readiness_path: {type: string, maxLength: 256, default: /readyz}
+        liveness_path: {type: string, maxLength: 256, default: /healthz}
+    ApplicationSpec:
+      type: object
+      description: Immutable CRD snapshot; uses Kubernetes camelCase probe fields
+      required: [revision, image, resources]
+      properties:
+        revision: {type: integer, format: int64, minimum: 1}
+        image: {type: string}
+        replicas: {type: integer}
+        port: {type: integer}
+        resources: {$ref: '#/components/schemas/Resources'}
+        readinessPath: {type: string}
+        livenessPath: {type: string}
+    Tenant:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        slug: {type: string}
+        created_at: {type: integer, format: int64}
+    Cluster:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        state: {type: string, enum: [CONNECTED, DISCONNECTED]}
+        last_seen_at: {type: integer, format: int64}
+        registered_at: {type: integer, format: int64}
+        agent_version: {type: string, description: Most recent Agent version; omitted in M2}
+        last_error: {type: string, description: Current Agent connectivity diagnostic; omitted when connected or in M2}
+    Application:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        tenant_id: {type: string}
+        cluster_id: {type: string}
+        name: {type: string}
+        desired_revision: {type: integer, format: int64}
+        applied_revision: {type: integer, format: int64}
+        last_successful_revision: {type: integer, format: int64, description: Zero before first confirmed success}
+        status: {type: string, enum: [PENDING, DEPLOYING, READY, DEGRADED, UNKNOWN, DELETING, DELETED]}
+        last_observed_at: {type: integer, format: int64}
+        kubernetes_uid: {type: string}
+        observation_error_code: {type: string, description: Current observed failure; omitted when no failure is observed}
+        observation_error_message: {type: string, description: Current observed failure reason; deployment history remains unchanged}
+        observed: {$ref: '#/components/schemas/Observation'}
+    Observation:
+      type: object
+      description: Last actual Worker report, retained with Application.last_observed_at when disconnected. A failed operation is not rewritten by a later Ready report.
+      properties:
+        observed_revision: {type: integer, format: int64}
+        generation: {type: integer, format: int64}
+        observed_generation: {type: integer, format: int64}
+        uid: {type: string}
+        applied: {type: boolean}
+        ready: {type: boolean}
+        deleted: {type: boolean}
+        error_code: {type: string}
+        message: {type: string}
+        conditions:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              type: {type: string}
+              status: {type: string, enum: ['True', 'False', Unknown]}
+              reason: {type: string}
+              message: {type: string}
+              observedGeneration: {type: integer, format: int64}
+              lastTransitionTime: {type: string, format: date-time}
+    Release:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        app_id: {type: string, format: uuid}
+        revision: {type: integer, format: int64}
+        spec_snapshot: {$ref: '#/components/schemas/ApplicationSpec'}
+        state: {type: string, enum: [PENDING, ACTIVE, FAILED, SUPERSEDED]}
+        created_by: {type: string}
+        created_at: {type: integer, format: int64}
+        rollback_source_revision: {type: integer, format: int64}
+    Operation:
+      type: object
+      properties:
+        request_id: {type: string, format: uuid, description: Present for authenticated M4 mutations; preserved across idempotency replay}
+        traceparent: {type: string, description: Optional M5 accepted request W3C TraceContext; immutable across replay and restart}
+        tracestate: {type: string, description: Optional internal W3C trace state; external HTTP baggage and tracestate are ignored}
+        id: {type: string, format: uuid}
+        app_id: {type: string, format: uuid}
+        release_id: {type: string, format: uuid}
+        command_id: {type: string, format: uuid}
+        type: {type: string, enum: [CREATE, RELEASE, ROLLBACK, DELETE]}
+        state: {type: string, enum: [QUEUED, DISPATCHED, RUNNING, SUCCEEDED, FAILED, TIMED_OUT]}
+        error_code: {type: string}
+        error_message: {type: string}
+        created_at: {type: integer, format: int64}
+        deadline_at: {type: integer, format: int64}
+        finished_at: {type: integer, format: int64}
+    Event:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        operation_id: {type: string, format: uuid}
+        kind: {type: string, enum: [QUEUED, APPLIED, UID_BOUND, SUCCEEDED, FAILED, TIMED_OUT, LATE_READY, OBSERVED_DEGRADED, OBSERVED_RECOVERED]}
+        message: {type: string}
+        occurred_at: {type: integer, format: int64}
+    Detail:
+      type: object
+      properties:
+        application: {$ref: '#/components/schemas/Application'}
+        releases: {type: array, items: {$ref: '#/components/schemas/Release'}}
+        operations: {type: array, items: {$ref: '#/components/schemas/Operation'}}
+        events: {type: array, items: {$ref: '#/components/schemas/Event'}}
+    Accepted:
+      type: object
+      properties:
+        application_id: {type: string, format: uuid}
+        operation_id: {type: string, format: uuid}
+        revision: {type: integer, format: int64}
+        state: {type: string, description: QUEUED on acceptance; replay returns persisted operation state}

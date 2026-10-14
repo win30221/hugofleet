@@ -1,0 +1,83 @@
+openapi: 3.0.3
+info:
+  title: HugoFleet M5 Dashboard Hub
+  version: 0.5.0
+  description: >-
+    M4 verified OIDC, opaque session, current database roles and exact Origin/CSRF
+    mutation contracts remain in force. Shared paths reference the M4 contract.
+    M5 adds Admin-only process telemetry; per-operation trace context and the last
+    actual Worker snapshot are present in shared Application/Operation models.
+    HTML Dashboard routes revalidate the same session and membership.
+servers:
+  - url: http://127.0.0.1:18095
+security:
+  - platformSession: []
+paths:
+  /healthz: {$ref: './openapi-m4.yaml#/paths/~1healthz'}
+  /readyz: {$ref: './openapi-m4.yaml#/paths/~1readyz'}
+  /oidc/login: {$ref: './openapi-m4.yaml#/paths/~1oidc~1login'}
+  /oidc/callback: {$ref: './openapi-m4.yaml#/paths/~1oidc~1callback'}
+  /logout: {$ref: './openapi-m4.yaml#/paths/~1logout'}
+  /api/v1/auth/me: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1auth~1me'}
+  /api/v1/users: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1users'}
+  /api/v1/clusters: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1clusters'}
+  /api/v1/tenants: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1tenants'}
+  /api/v1/tenants/{tenantId}/quota: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1quota'}
+  /api/v1/tenants/{tenantId}/members: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1members'}
+  /api/v1/tenants/{tenantId}/apps: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1apps'}
+  /api/v1/tenants/{tenantId}/apps/{appId}: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1apps~1{appId}'}
+  /api/v1/tenants/{tenantId}/apps/{appId}/releases: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1apps~1{appId}~1releases'}
+  /api/v1/tenants/{tenantId}/apps/{appId}/rollback: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1apps~1{appId}~1rollback'}
+  /api/v1/operations/{operationId}: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1operations~1{operationId}'}
+  /api/v1/audit-events: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1audit-events'}
+  /api/v1/audit: {$ref: './openapi-m4.yaml#/paths/~1api~1v1~1audit'}
+  /metrics:
+    get:
+      operationId: m5Metrics
+      description: PlatformAdmin only; bounded labels, in-process counters reset on restart. Uses the same configured Host/peer restrictions and current opaque session.
+      responses:
+        '200':
+          description: Prometheus text exposition
+          content:
+            text/plain:
+              schema: {type: string}
+        '303': {description: Missing platform session redirects to login}
+        '403':
+          description: Authenticated non-admin receives the standard HTML permission error
+          content:
+            text/html:
+              schema: {type: string}
+  /api/v1/traces:
+    get:
+      operationId: m5Traces
+      description: PlatformAdmin only. At most 100 safe Hub spans from a 3000-record process ring; excludes tokens, raw HTTP data, arbitrary attributes and SDK events.
+      parameters:
+        - name: trace
+          in: query
+          schema: {type: string, pattern: '^[0-9a-fA-F]{32}$'}
+      responses:
+        '200':
+          description: Safe recent Hub spans, optionally filtered by valid trace ID
+          content:
+            application/json:
+              schema: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/TraceRecord'}}
+        '400': {$ref: './openapi-m4.yaml#/components/responses/Error'}
+        '403': {$ref: './openapi-m4.yaml#/components/responses/Error'}
+components:
+  securitySchemes:
+    platformSession: {$ref: './openapi-m4.yaml#/components/securitySchemes/platformSession'}
+  schemas:
+    TraceRecord:
+      type: object
+      properties:
+        service: {type: string, enum: [hub, agent, operator]}
+        name: {type: string, enum: [hub.http, hub.operation, hub.command, agent.command, operator.reconcile]}
+        trace_id: {type: string, pattern: '^[0-9a-f]{32}$'}
+        span_id: {type: string, pattern: '^[0-9a-f]{16}$'}
+        parent_span_id: {type: string, pattern: '^[0-9a-f]{16}$'}
+        started_at: {type: integer, format: int64, description: Unix milliseconds}
+        duration_us: {type: integer, format: int64}
+        attributes:
+          type: object
+          additionalProperties: {type: string}
+          description: Fixed correlation ID/status allowlist only; never arbitrary request attributes

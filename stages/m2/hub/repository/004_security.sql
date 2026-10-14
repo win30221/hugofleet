@@ -1,0 +1,11 @@
+CREATE TABLE security_settings(id INTEGER PRIMARY KEY CHECK(id=1),issuer TEXT NOT NULL,admin_subject TEXT NOT NULL);
+CREATE TABLE users(id TEXT PRIMARY KEY,issuer TEXT NOT NULL,oidc_subject TEXT NOT NULL,email TEXT NOT NULL DEFAULT '',platform_admin INTEGER NOT NULL DEFAULT 0 CHECK(platform_admin IN (0,1)),created_at INTEGER NOT NULL,UNIQUE(issuer,oidc_subject));
+CREATE TRIGGER immutable_user_identity BEFORE UPDATE OF id,issuer,oidc_subject,created_at ON users BEGIN SELECT RAISE(ABORT,'user identity is immutable'); END;
+CREATE TABLE tenant_memberships(tenant_id TEXT NOT NULL REFERENCES tenants(id),user_id TEXT NOT NULL REFERENCES users(id),role TEXT NOT NULL CHECK(role IN ('Owner','Developer','Viewer')),PRIMARY KEY(tenant_id,user_id));
+CREATE TABLE tenant_profiles(tenant_id TEXT NOT NULL REFERENCES tenants(id),cluster_id TEXT NOT NULL REFERENCES clusters(id),namespace TEXT NOT NULL,bootstrap_uid TEXT NOT NULL,profile_json TEXT NOT NULL,PRIMARY KEY(tenant_id,cluster_id),UNIQUE(cluster_id,namespace));
+CREATE TABLE sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),csrf TEXT NOT NULL,expires_at INTEGER NOT NULL,created_at INTEGER NOT NULL);
+CREATE INDEX sessions_expiry ON sessions(expires_at);
+CREATE TABLE login_transactions(state_hash TEXT PRIMARY KEY,binding_hash TEXT NOT NULL,nonce TEXT NOT NULL,verifier TEXT NOT NULL,expires_at INTEGER NOT NULL);
+CREATE TABLE audit_events(id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,tenant_id TEXT NOT NULL,action TEXT NOT NULL,target_type TEXT NOT NULL,target_id TEXT NOT NULL,outcome TEXT NOT NULL,request_id TEXT NOT NULL,occurred_at INTEGER NOT NULL);
+CREATE INDEX audit_tenant_time ON audit_events(tenant_id,occurred_at);
+ALTER TABLE operations ADD COLUMN request_id TEXT NOT NULL DEFAULT '';

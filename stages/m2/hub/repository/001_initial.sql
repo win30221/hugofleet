@@ -1,0 +1,13 @@
+CREATE TABLE tenants(id TEXT PRIMARY KEY,name TEXT NOT NULL,slug TEXT NOT NULL UNIQUE,created_at INTEGER NOT NULL);
+CREATE TABLE clusters(id TEXT PRIMARY KEY,name TEXT NOT NULL,state TEXT NOT NULL,last_seen_at INTEGER NOT NULL,registered_at INTEGER NOT NULL);
+CREATE TABLE applications(id TEXT PRIMARY KEY,tenant_id TEXT NOT NULL REFERENCES tenants(id),cluster_id TEXT NOT NULL REFERENCES clusters(id),name TEXT NOT NULL,desired_revision INTEGER NOT NULL DEFAULT 0,applied_revision INTEGER NOT NULL DEFAULT 0,last_successful_revision INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL,last_observed_at INTEGER NOT NULL DEFAULT 0,kubernetes_uid TEXT NOT NULL DEFAULT '',UNIQUE(tenant_id,name));
+CREATE TABLE releases(id TEXT PRIMARY KEY,app_id TEXT NOT NULL REFERENCES applications(id),revision INTEGER NOT NULL,spec_snapshot_json TEXT NOT NULL,state TEXT NOT NULL,created_by TEXT NOT NULL,created_at INTEGER NOT NULL,rollback_source_revision INTEGER NOT NULL DEFAULT 0,UNIQUE(app_id,revision));
+CREATE TRIGGER immutable_release BEFORE UPDATE OF app_id,revision,spec_snapshot_json,created_by,created_at,rollback_source_revision ON releases BEGIN SELECT RAISE(ABORT,'release snapshot is immutable'); END;
+CREATE TABLE operations(id TEXT PRIMARY KEY,app_id TEXT NOT NULL REFERENCES applications(id),release_id TEXT REFERENCES releases(id),command_id TEXT NOT NULL UNIQUE,type TEXT NOT NULL,state TEXT NOT NULL,error_code TEXT NOT NULL DEFAULT '',error_message TEXT NOT NULL DEFAULT '',created_at INTEGER NOT NULL,deadline_at INTEGER NOT NULL,finished_at INTEGER NOT NULL DEFAULT 0);
+CREATE UNIQUE INDEX one_active_operation ON operations(app_id) WHERE state IN ('QUEUED','DISPATCHED','RUNNING');
+CREATE TABLE idempotency_keys(tenant_id TEXT NOT NULL REFERENCES tenants(id),key TEXT NOT NULL,request_hash TEXT NOT NULL,operation_id TEXT NOT NULL REFERENCES operations(id),PRIMARY KEY(tenant_id,key));
+CREATE TABLE operation_events(id TEXT PRIMARY KEY,operation_id TEXT NOT NULL REFERENCES operations(id),kind TEXT NOT NULL,message TEXT NOT NULL,occurred_at INTEGER NOT NULL,UNIQUE(operation_id,kind));
+CREATE INDEX events_by_operation ON operation_events(operation_id,occurred_at);
+CREATE INDEX operations_queue ON operations(state,created_at);
+CREATE TRIGGER terminal_operation BEFORE UPDATE OF state ON operations WHEN OLD.state IN ('SUCCEEDED','FAILED','TIMED_OUT') AND NEW.state!=OLD.state BEGIN SELECT RAISE(ABORT,'operation is terminal'); END;
+CREATE TRIGGER failed_release BEFORE UPDATE OF state ON releases WHEN OLD.state='FAILED' AND NEW.state!='FAILED' BEGIN SELECT RAISE(ABORT,'failed release is terminal'); END;

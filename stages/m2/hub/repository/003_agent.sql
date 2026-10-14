@@ -1,0 +1,2 @@
+ALTER TABLE clusters ADD COLUMN agent_version TEXT NOT NULL DEFAULT '';
+ALTER TABLE clusters ADD COLUMN last_error TEXT NOT NULL DEFAULT '';

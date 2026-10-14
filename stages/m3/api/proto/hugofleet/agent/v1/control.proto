@@ -1,0 +1,87 @@
+syntax = "proto3";
+package hugofleet.agent.v1;
+option go_package = "github.com/win30221/hugofleet/stages/m3/api/agent/v1;agentv1";
+
+service AgentControlService {
+  rpc Connect(stream AgentEnvelope) returns (stream HubEnvelope);
+}
+message AgentEnvelope {
+  oneof payload {
+    AgentHello hello = 1;
+    Heartbeat heartbeat = 2;
+    CommandResult result = 3;
+  }
+}
+message AgentHello { string cluster_id = 1; string agent_version = 2; repeated string capabilities = 3; }
+message Heartbeat { int64 timestamp = 1; }
+message HubWelcome { string session_id = 1; }
+message ApplicationIdentity {
+  string application_id = 1;
+  string tenant_id = 2;
+  string namespace = 3;
+  string name = 4;
+  string uid = 5;
+  int64 revision = 6;
+}
+message ResourceValues { string cpu = 1; string memory = 2; }
+message ApplicationSpec {
+  string image = 1;
+  int32 replicas = 2;
+  int32 port = 3;
+  ResourceValues requests = 4;
+  ResourceValues limits = 5;
+  string readiness_path = 6;
+  string liveness_path = 7;
+}
+message ApplyApplication { ApplicationIdentity application = 1; ApplicationSpec spec = 2; }
+message DeleteApplication { ApplicationIdentity application = 1; }
+// Snapshot is a read-only, exact-spec observation, also used before resending.
+message RequestSnapshot { ApplicationIdentity application = 1; ApplicationSpec spec = 2; }
+// Read-only proof of a separately provisioned tenant. This cannot create or
+// modify namespaces, quota, RBAC or any other Kubernetes object.
+message RequestTenantProfile { string tenant_id = 1; }
+message TenantProfile {
+  string tenant_id = 1;
+  string cluster_id = 2;
+  string namespace = 3;
+  string bootstrap_uid = 4;
+  map<string, string> hard = 5;
+  map<string, string> defaults = 6;
+}
+message HubEnvelope {
+  string command_id = 1;
+  string operation_id = 2;
+  int64 expires_at = 3;
+  string payload_hash = 4;
+  string traceparent = 5;
+  string tracestate = 6;
+  string request_id = 7;
+  oneof payload {
+    HubWelcome welcome = 10;
+    ApplyApplication apply = 11;
+    DeleteApplication delete = 12;
+    RequestSnapshot snapshot = 13;
+    RequestTenantProfile tenant_profile = 14;
+  }
+}
+message WorkloadStatus {
+  string uid = 1;
+  bool applied = 2;
+  bool ready = 3;
+  bool deleted = 4;
+  string error_code = 5;
+  string message = 6;
+  ApplicationIdentity application = 7;
+  int64 observed_revision = 8;
+  int64 generation = 9;
+  int64 observed_generation = 10;
+  repeated Condition conditions = 11;
+}
+message Condition { string type = 1; string status = 2; string reason = 3; string message = 4; int64 observed_generation = 5; int64 last_transition_at = 6; }
+message CommandResult {
+  string command_id = 1;
+  string error_code = 2;
+  string error_message = 3;
+  WorkloadStatus status = 4;
+  TenantProfile tenant_profile = 5;
+}

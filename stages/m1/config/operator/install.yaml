@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hf-demo
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hugofleet-operator
+  namespace: hf-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hugofleet-operator
+  namespace: hf-demo
+subjects:
+  - kind: ServiceAccount
+    name: hugofleet-operator
+    namespace: hf-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: hugofleet-operator
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hugofleet-operator
+  namespace: hf-demo
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hugofleet-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hugofleet-operator
+    spec:
+      serviceAccountName: hugofleet-operator
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: operator
+          image: hugofleet-operator:m1
+          imagePullPolicy: IfNotPresent
+          args:
+            - --namespace=hf-demo
+            - --health-probe-bind-address=:8081
+          ports:
+            - name: health
+              containerPort: 8081
+          resources:
+            requests:
+              cpu: 100m
+              memory: 96Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            periodSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            periodSeconds: 5

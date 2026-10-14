@@ -1,0 +1,11 @@
+.git
+.tools
+.cache
+.local
+bin
+artifacts
+docs
+*.md
+**/*.key
+**/*.pem
+**/*.db

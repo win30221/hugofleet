@@ -1,0 +1,417 @@
+openapi: 3.0.3
+info:
+  title: HugoFleet M4 OIDC Hub
+  version: 0.4.0
+  description: >-
+    Verified OIDC Code + S256 PKCE creates an opaque server-side platform session.
+    ID/access tokens and Demo Bearer tokens are not platform sessions.
+    Every management request checks the current database session and role.
+    Mutations require the exact configured Origin and the session X-CSRF-Token.
+    All timestamps are Unix milliseconds; zero means unobserved.
+    This loopback LocalDemo server uses HTTP; normal deployment requires HTTPS.
+    M2/M3 development contracts remain in openapi.yaml; their authentication
+    exceptions do not apply to M4. Shared response models are referenced from that file.
+servers:
+  - url: http://127.0.0.1:18094
+security:
+  - platformSession: []
+paths:
+  /healthz:
+    get:
+      security: []
+      operationId: m4Health
+      responses:
+        '200': {description: Process serves HTTP; configured Host and Demo peer restrictions still apply}
+  /readyz:
+    get:
+      security: []
+      operationId: m4Readiness
+      responses:
+        '200': {description: SQLite and both configured Worker channels are reachable}
+        '503': {$ref: '#/components/responses/Error'}
+  /oidc/login:
+    get:
+      security: []
+      operationId: m4BeginLogin
+      description: Browser login entry; sets HttpOnly binding cookie and redirects to the trusted provider. No password or token accepted by the Hub.
+      responses:
+        '303': {description: Authorization request with state, nonce and S256 challenge}
+  /oidc/callback:
+    get:
+      security: []
+      operationId: m4CompleteLogin
+      description: Provider callback consumes a known state even when browser binding is absent or wrong. Requires the matching hf_login_binding cookie.
+      parameters:
+        - {name: state, in: query, required: true, schema: {type: string}}
+        - {name: code, in: query, required: true, schema: {type: string}}
+      responses:
+        '303': {description: Verified login sets HttpOnly SameSite=Strict hf_session cookie and redirects to the dashboard}
+        '401': {description: Invalid callback; HTML error page, no reusable login transaction}
+        '500': {description: Internal failure; HTML error page}
+  /logout:
+    post:
+      operationId: m4Logout
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/CSRF'}
+      responses:
+        '303': {description: Session revoked immediately; cookie removed; redirect to login}
+        '403': {description: Origin or CSRF rejected; existing session remains valid; HTML error page}
+  /api/v1/auth/me:
+    get:
+      operationId: m4CurrentUser
+      responses:
+        '200':
+          description: Current immutable issuer/sub identity, database admin flag and session CSRF value
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, csrf_token, expires_at]
+                properties:
+                  user: {$ref: '#/components/schemas/User'}
+                  csrf_token: {type: string, description: Use as X-CSRF-Token; never log or commit this value}
+                  expires_at: {type: integer, format: int64}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/clusters:
+    get:
+      operationId: m4VisibleClusters
+      responses:
+        '200':
+          description: Platform Admin sees registered Workers; other users see only Workers approved for their current memberships
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: './openapi.yaml#/components/schemas/Cluster'}}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/users:
+    get:
+      operationId: m4KnownUsers
+      responses:
+        '200':
+          description: Platform Admin only; identities enrolled through verified OIDC login
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/User'}}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/tenants:
+    get:
+      operationId: m4VisibleTenants
+      responses:
+        '200':
+          description: Platform Admin sees all tenants; other users see only current memberships
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: './openapi.yaml#/components/schemas/Tenant'}}
+        default: {$ref: '#/components/responses/Error'}
+    post:
+      operationId: m4ActivateTenant
+      description: Platform Admin verifies a connected Agent's existing bootstrap receipt and real quota/defaults. Does not create namespaces or RBAC remotely. Repeated activation cannot replace name, Owner or receipt UID.
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/CSRF'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [slug, name, cluster_id, owner_id]
+              properties:
+                slug: {$ref: '#/components/schemas/TenantSlug'}
+                name: {type: string, minLength: 1, maxLength: 100, description: Trimmed display name without CR/LF/NUL}
+                cluster_id: {type: string, description: Registered connected Worker identity}
+                owner_id: {type: string, format: uuid, description: User enrolled through verified OIDC login with a nonempty display email; email is not an identity or role key}
+      responses:
+        '201':
+          description: Verified Worker profile activated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant_id: {type: string}
+                  cluster_id: {type: string}
+                  state: {type: string, enum: [ACTIVE]}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/tenants/{tenantId}/quota:
+    parameters:
+      - {$ref: '#/components/parameters/TenantId'}
+    get:
+      operationId: m4TenantProfiles
+      responses:
+        '200':
+          description: Viewer or higher; approved Worker profiles. Hard/defaults are verified configuration snapshots, not current quota usage.
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/TenantProfile'}}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/tenants/{tenantId}/members:
+    parameters:
+      - {$ref: '#/components/parameters/TenantId'}
+    get:
+      operationId: m4TenantMembers
+      responses:
+        '200':
+          description: Viewer or higher within the tenant
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/Membership'}}
+        default: {$ref: '#/components/responses/Error'}
+    post:
+      operationId: m4SetMember
+      description: Owner or Platform Admin; empty role revokes membership. The last Owner cannot be removed. Revocation applies before idempotency replay checks on subsequent mutations.
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/CSRF'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [user_id, role]
+              properties:
+                user_id: {type: string, format: uuid}
+                role: {type: string, enum: [Owner, Developer, Viewer, '']}
+      responses:
+        '200': {description: Database membership committed; state SUCCEEDED}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/audit-events:
+    get:
+      operationId: m4AuditEvents
+      parameters:
+        - {name: tenant, in: query, schema: {$ref: '#/components/schemas/TenantSlug'}, description: Required for non-admin users; Viewer or higher}
+        - {$ref: './openapi.yaml#/components/parameters/Limit'}
+      responses:
+        '200':
+          description: Bounded newest audit events; Platform Admin may omit tenant for a global view
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/AuditEvent'}}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/audit:
+    get:
+      operationId: m4AuditAlias
+      deprecated: true
+      description: Compatibility alias of GET /api/v1/audit-events with identical authorization and query parameters
+      parameters:
+        - {name: tenant, in: query, schema: {$ref: '#/components/schemas/TenantSlug'}}
+        - {$ref: './openapi.yaml#/components/parameters/Limit'}
+      responses:
+        '200':
+          description: Identical bounded audit event list
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/AuditEvent'}}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/tenants/{tenantId}/apps:
+    parameters:
+      - {$ref: '#/components/parameters/TenantId'}
+    get:
+      operationId: m4ListApps
+      parameters:
+        - {$ref: './openapi.yaml#/components/parameters/Limit'}
+        - {name: after, in: query, schema: {type: string}, description: Exclusive Application ID cursor}
+      responses:
+        '200':
+          description: Viewer or higher; ID-sorted page including retained deleted applications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: {type: array, items: {$ref: './openapi.yaml#/components/schemas/Application'}}
+                  next_after: {type: string}
+        default: {$ref: '#/components/responses/Error'}
+    post:
+      operationId: m4CreateApp
+      description: Developer or higher; approved connected Worker; authorization is rechecked before idempotency replay
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/CSRF'}
+        - {$ref: './openapi.yaml#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: './openapi.yaml#/components/schemas/CreateRequest'}
+      responses:
+        '202': {$ref: './openapi.yaml#/components/responses/Accepted'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/tenants/{tenantId}/apps/{appId}:
+    parameters:
+      - {$ref: '#/components/parameters/TenantId'}
+      - {$ref: './openapi.yaml#/components/parameters/AppId'}
+    get:
+      operationId: m4GetApp
+      parameters:
+        - {$ref: './openapi.yaml#/components/parameters/Limit'}
+      responses:
+        '200':
+          description: Viewer or higher; same-tenant application and bounded immutable history
+          content:
+            application/json:
+              schema: {$ref: './openapi.yaml#/components/schemas/Detail'}
+        default: {$ref: '#/components/responses/Error'}
+    delete:
+      operationId: m4DeleteApp
+      description: Owner or Platform Admin; CR UID precondition, real GC verification and retained history. Developer cannot delete.
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/CSRF'}
+        - {$ref: './openapi.yaml#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DeleteRequest'}
+      responses:
+        '202': {$ref: './openapi.yaml#/components/responses/Accepted'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/tenants/{tenantId}/apps/{appId}/releases:
+    parameters:
+      - {$ref: '#/components/parameters/TenantId'}
+      - {$ref: './openapi.yaml#/components/parameters/AppId'}
+    post:
+      operationId: m4ReleaseApp
+      description: Developer or higher; complete new configuration. Active operation or stale expected revision returns 409.
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/CSRF'}
+        - {$ref: './openapi.yaml#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: './openapi.yaml#/components/schemas/DeployRequest'}
+      responses:
+        '202': {$ref: './openapi.yaml#/components/responses/Accepted'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/tenants/{tenantId}/apps/{appId}/rollback:
+    parameters:
+      - {$ref: '#/components/parameters/TenantId'}
+      - {$ref: './openapi.yaml#/components/parameters/AppId'}
+    post:
+      operationId: m4RollbackApp
+      description: Developer or higher; creates a new revision from an ACTIVE or SUPERSEDED snapshot. Failed source returns 409.
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/CSRF'}
+        - {$ref: './openapi.yaml#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [target_revision, expected_desired_revision]
+              properties:
+                target_revision: {type: integer, format: int64, minimum: 1}
+                expected_desired_revision: {type: integer, format: int64, minimum: 1}
+      responses:
+        '202': {$ref: './openapi.yaml#/components/responses/Accepted'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/operations/{operationId}:
+    get:
+      operationId: m4GetOperation
+      parameters:
+        - {name: operationId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Current membership must permit the operation's tenant; terminal history never changes on late Ready
+          content:
+            application/json:
+              schema: {$ref: './openapi.yaml#/components/schemas/Operation'}
+        default: {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    platformSession:
+      type: apiKey
+      in: cookie
+      name: hf_session
+      description: Opaque verified platform session; raw OIDC tokens and Bearer headers are not accepted
+  parameters:
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/TenantSlug'}
+    Origin:
+      name: Origin
+      in: header
+      required: true
+      schema: {type: string}
+      description: Exact configured platform base URL; Demo http://127.0.0.1:18094
+    CSRF:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema: {type: string}
+      description: Exact current session value from GET /api/v1/auth/me; form UI sends its csrf field instead
+  responses:
+    Error:
+      description: '400 invalid input, 401 invalid session, 403 authorization/Origin/CSRF, 404 absent, 409 conflict/ownership, 422 quota precheck, 503 offline, 500 internal'
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error:
+                type: object
+                required: [code, message, request_id]
+                properties:
+                  code: {type: string, enum: [INVALID_ARGUMENT, UNAUTHENTICATED, PERMISSION_DENIED, NOT_FOUND, CONFLICT, OWNERSHIP_CONFLICT, QUOTA_EXCEEDED, CLUSTER_OFFLINE, UNAVAILABLE, INTERNAL]}
+                  message: {type: string}
+                  request_id: {type: string, format: uuid}
+  schemas:
+    TenantSlug:
+      type: string
+      minLength: 1
+      maxLength: 60
+      pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+    DeleteRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_desired_revision]
+      properties:
+        expected_desired_revision: {type: integer, format: int64, minimum: 1}
+    User:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        issuer: {type: string}
+        subject: {type: string}
+        email: {type: string, description: Mutable display value from signed claims; identity and authorization use issuer/sub and database membership}
+        platform_admin: {type: boolean, description: Trusted database setting; never derived from groups or role claims}
+        created_at: {type: integer, format: int64}
+    Membership:
+      type: object
+      properties:
+        user_id: {type: string, format: uuid}
+        email: {type: string}
+        role: {type: string, enum: [Owner, Developer, Viewer]}
+    TenantProfile:
+      type: object
+      properties:
+        tenant_id: {type: string}
+        cluster_id: {type: string}
+        namespace: {type: string}
+        bootstrap_uid: {type: string}
+        hard: {type: object, additionalProperties: {type: string}, description: Verified requests.cpu/requests.memory/limits.cpu/limits.memory/pods}
+        defaults: {type: object, additionalProperties: {type: string}, description: Verified requests.cpu/requests.memory/limits.cpu/limits.memory}
+    AuditEvent:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        actor_id: {type: string, description: Verified user UUID; empty for an unauthenticated login event}
+        tenant_id: {type: string, description: Omitted for global events}
+        action: {type: string}
+        target_type: {type: string}
+        target_id: {type: string}
+        outcome: {type: string}
+        request_id: {type: string, format: uuid}
+        occurred_at: {type: integer, format: int64}

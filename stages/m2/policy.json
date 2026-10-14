@@ -1,0 +1,7 @@
+{
+ "DefaultResources": {"requests":{"cpu":"100m","memory":"64Mi"},"limits":{"cpu":"300m","memory":"128Mi"}},
+ "MaxCPU":"1",
+ "MaxMemory":"512Mi",
+ "SurgeCPU":"2",
+ "SurgeMemory":"1Gi"
+}

@@ -1,0 +1,111 @@
+{{- if or (ne .Release.Name "hugofleet-worker") (ne .Release.Namespace "hf-system") }}{{ fail "Use the fixed hugofleet-worker release in the prepared hf-system namespace." }}{{ end }}
+{{- range $tenant := .Values.tenants }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hugofleet-operator
+  namespace: hf-{{ $tenant }}
+  labels:
+    {{- include "hf.labels" $ | nindent 4 }}
+    platform.hugofleet.io/tenant: {{ $tenant | quote }}
+  annotations:
+    {{- include "hf.annotations" $ | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: hugofleet-operator
+  namespace: hf-{{ $tenant }}
+  labels:
+    {{- include "hf.labels" $ | nindent 4 }}
+    platform.hugofleet.io/tenant: {{ $tenant | quote }}
+  annotations:
+    {{- include "hf.annotations" $ | nindent 4 }}
+rules:
+  - apiGroups: ['']
+    resources: [services]
+    verbs: [create, get, list, patch, update, watch]
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [create, get, list, patch, update, watch]
+  - apiGroups: [platform.hugofleet.io]
+    resources: [applications]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [replicasets]
+    verbs: [get, list, watch]
+  - apiGroups: [platform.hugofleet.io]
+    resources: [applications/status]
+    verbs: [get, patch, update]
+  - apiGroups: [platform.hugofleet.io]
+    resources: [applications/finalizers]
+    verbs: [update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hugofleet-operator
+  namespace: hf-{{ $tenant }}
+  labels:
+    {{- include "hf.labels" $ | nindent 4 }}
+    platform.hugofleet.io/tenant: {{ $tenant | quote }}
+  annotations:
+    {{- include "hf.annotations" $ | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: hugofleet-operator
+    namespace: hf-{{ $tenant }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: hugofleet-operator
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hugofleet-operator
+  namespace: hf-{{ $tenant }}
+  labels:
+    {{- include "hf.labels" $ | nindent 4 }}
+    platform.hugofleet.io/tenant: {{ $tenant | quote }}
+  annotations:
+    {{- include "hf.annotations" $ | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hugofleet-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hugofleet-operator
+      annotations:
+        platform.hugofleet.io/rollout: {{ $.Values.rollout | quote }}
+    spec:
+      serviceAccountName: hugofleet-operator
+      terminationGracePeriodSeconds: 15
+      securityContext:
+        {{- include "hf.podSecurity" $ | nindent 8 }}
+      containers:
+        - name: hugofleet-operator
+          image: {{ $.Values.operatorImage | quote }}
+          imagePullPolicy: IfNotPresent
+          args: ["--namespace=hf-{{ $tenant }}", "--health-probe-bind-address=:8081", "--telemetry"]
+          ports:
+            - name: health
+              containerPort: 8081
+          readinessProbe:
+            httpGet: {path: /readyz, port: health}
+            periodSeconds: 2
+          livenessProbe:
+            httpGet: {path: /healthz, port: health}
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 100m, memory: 96Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          securityContext:
+            {{- include "hf.security" $ | nindent 12 }}
+{{- end }}

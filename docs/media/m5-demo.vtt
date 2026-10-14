@@ -1,0 +1,88 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:06.000
+Local M5 login: existing OIDC session expired; the Hub requires a new login.
+Captured 12:44:31 UTC
+
+00:00:06.000 --> 00:00:12.000
+Admin overview after real Dex OIDC login: two connected mTLS Workers and retained
+operation history.
+Captured 12:44:59 UTC
+
+00:00:12.000 --> 00:00:18.000
+Both Workers connected: Agent version m5, last heartbeat and actual transport state.
+Captured 12:45:00 UTC
+
+00:00:18.000 --> 00:00:24.000
+Tenant A Owner overview exposes only Tenant A applications and history.
+Captured 12:51:52 UTC
+
+00:00:24.000 --> 00:00:30.000
+Owner submits video-pricing v1 to the provisioned Worker A through the typed HTML
+form.
+Captured 12:52:25 UTC
+
+00:00:30.000 --> 00:00:36.000
+The accepted deployment is pending; success waits for actual Kubernetes rollout.
+Captured 12:52:25 UTC
+
+00:00:36.000 --> 00:00:42.000
+Browser release of v2-good and replicas=2 is queued as revision 2.
+Captured 12:55:57 UTC
+
+00:00:42.000 --> 00:00:48.000
+v2-good READY, revision 2 and replicas=2 after actual Operator drift repair;
+persistent history survived Hub recreation.
+Captured 12:58:14 UTC
+
+00:00:48.000 --> 00:00:54.000
+Release v2-broken is revision 3; the previous successful revision remains 2.
+Captured 12:58:14 UTC
+
+00:00:54.000 --> 00:01:00.000
+Worker B Agent is deliberately paused: DISCONNECTED preserves its last heartbeat;
+the local workload remains available.
+Captured 12:59:11 UTC
+
+00:01:00.000 --> 00:01:06.000
+The same Worker B Agent reconnects over mTLS with a fresh heartbeat.
+Captured 12:59:59 UTC
+
+00:01:06.000 --> 00:01:12.000
+v2-broken failed with real ProgressDeadlineExceeded; revision 2 stays last
+successful and the request ID is retained.
+Captured 13:00:00 UTC
+
+00:01:12.000 --> 00:01:18.000
+Rollback confirmation selects successful revision 1 and will create a new revision;
+it does not erase revision 3.
+Captured 13:00:28 UTC
+
+00:01:18.000 --> 00:01:24.000
+Confirmed rollback is accepted as revision 4, with prior failure history preserved.
+Captured 13:00:29 UTC
+
+00:01:24.000 --> 00:01:30.000
+Rollback revision 4 is READY with v1; revision 3 remains FAILED and the original CR
+UID is unchanged.
+Captured 13:02:37 UTC
+
+00:01:30.000 --> 00:01:36.000
+Applications filters show only the authorized Tenant A and Worker A, including
+revision 4 recovery.
+Captured 13:04:06 UTC
+
+00:01:36.000 --> 00:01:42.000
+Tenant A Owner is denied when opening the known Tenant B application; no foreign
+details are exposed.
+Captured 13:04:32 UTC
+
+00:01:42.000 --> 00:01:48.000
+Viewer sees actual Ready/Conditions and preserved releases, with no deployment,
+rollback or delete controls.
+Captured 13:05:20 UTC
+
+00:01:48.000 --> 00:01:54.000
+Viewer is denied access to platform-wide Prometheus metrics by server-side
+authorization.
+Captured 13:05:20 UTC

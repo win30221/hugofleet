@@ -1,0 +1,116 @@
+[
+  {
+    "frame": 1,
+    "captured_at": "2026-10-13T12:44:31.768Z",
+    "screenshot_sha256": "256f55246b79c49973d52e1aceb9d2455a8ba89a41b5c490d3598a4c2449f4a0",
+    "caption": "Local M5 login: existing OIDC session expired; the Hub requires a new login."
+  },
+  {
+    "frame": 2,
+    "captured_at": "2026-10-13T12:44:59.74Z",
+    "screenshot_sha256": "bb964188734def970d898dc1c6270498ae4e11415ec77123ba71525d749d5c7e",
+    "caption": "Admin overview after real Dex OIDC login: two connected mTLS Workers and retained operation history."
+  },
+  {
+    "frame": 3,
+    "captured_at": "2026-10-13T12:45:00.098Z",
+    "screenshot_sha256": "d278321d86eaabda4a0199fdf95959656aace9bcb938451a75f8b5d4815a7c56",
+    "caption": "Both Workers connected: Agent version m5, last heartbeat and actual transport state."
+  },
+  {
+    "frame": 5,
+    "captured_at": "2026-10-13T12:51:52.999Z",
+    "screenshot_sha256": "557ff2d50bed3331a9cbe54d4c7f3172772c6fa61b0005c3cf4fa4f971d1eaca",
+    "caption": "Tenant A Owner overview exposes only Tenant A applications and history."
+  },
+  {
+    "frame": 6,
+    "captured_at": "2026-10-13T12:52:25.504Z",
+    "screenshot_sha256": "9dad0726ffcb7cfbdbd702bf455b43c6b8ea3e0a736f3eb47aed2d523e30f0d1",
+    "caption": "Owner submits video-pricing v1 to the provisioned Worker A through the typed HTML form."
+  },
+  {
+    "frame": 7,
+    "captured_at": "2026-10-13T12:52:25.838Z",
+    "screenshot_sha256": "84637daa0880ca1b7850feca408f4f607dc84aabe7e52cebced2e9bfceabb050",
+    "caption": "The accepted deployment is pending; success waits for actual Kubernetes rollout."
+  },
+  {
+    "frame": 9,
+    "captured_at": "2026-10-13T12:55:57.778Z",
+    "screenshot_sha256": "d2d8f7431a8ce5331ce53a9fbe353d0541f1d1a418a4eb591013514e379e9bdf",
+    "caption": "Browser release of v2-good and replicas=2 is queued as revision 2."
+  },
+  {
+    "frame": 10,
+    "captured_at": "2026-10-13T12:58:14.363Z",
+    "screenshot_sha256": "f15dea561f753d2b85a6d4d81d576ba1e5183341c2e2c05cc09977ce16b77e84",
+    "caption": "v2-good READY, revision 2 and replicas=2 after actual Operator drift repair; persistent history survived Hub recreation."
+  },
+  {
+    "frame": 11,
+    "captured_at": "2026-10-13T12:58:14.966Z",
+    "screenshot_sha256": "410efbac8e53fe4505015d092ea1762b5565750851239f2281c5f1545c7a598f",
+    "caption": "Release v2-broken is revision 3; the previous successful revision remains 2."
+  },
+  {
+    "frame": 12,
+    "captured_at": "2026-10-13T12:59:11.426Z",
+    "screenshot_sha256": "76cd6c8f222d6e6f04be468ea0d45f9307a97548860e8f9d32268b3f3c7273d8",
+    "caption": "Worker B Agent is deliberately paused: DISCONNECTED preserves its last heartbeat; the local workload remains available."
+  },
+  {
+    "frame": 13,
+    "captured_at": "2026-10-13T12:59:59.715Z",
+    "screenshot_sha256": "674124015ef9642ce8eb8abe3ff8c3fa8369df26dcc317b6293a89e232999e37",
+    "caption": "The same Worker B Agent reconnects over mTLS with a fresh heartbeat."
+  },
+  {
+    "frame": 14,
+    "captured_at": "2026-10-13T13:00:00.167Z",
+    "screenshot_sha256": "79f6a4536d70ed39d8f584d2cf98d980f54b63f9262d535aa75337616f775129",
+    "caption": "v2-broken failed with real ProgressDeadlineExceeded; revision 2 stays last successful and the request ID is retained."
+  },
+  {
+    "frame": 15,
+    "captured_at": "2026-10-13T13:00:28.54Z",
+    "screenshot_sha256": "5da4352acb58c165ae947c1e8376e799abe1c617b4c4cba4634e9d3e60161431",
+    "caption": "Rollback confirmation selects successful revision 1 and will create a new revision; it does not erase revision 3."
+  },
+  {
+    "frame": 16,
+    "captured_at": "2026-10-13T13:00:29.256Z",
+    "screenshot_sha256": "ffae5a5f0545a4c43b20fe5e9cc3b694c8ae449502ba0912cf045a84c05eb2c6",
+    "caption": "Confirmed rollback is accepted as revision 4, with prior failure history preserved."
+  },
+  {
+    "frame": 17,
+    "captured_at": "2026-10-13T13:02:37.599Z",
+    "screenshot_sha256": "5648933342f0f3151e32eda1630c8305882b828a514682730e14f42055e2cf25",
+    "caption": "Rollback revision 4 is READY with v1; revision 3 remains FAILED and the original CR UID is unchanged."
+  },
+  {
+    "frame": 18,
+    "captured_at": "2026-10-13T13:04:06.423Z",
+    "screenshot_sha256": "3ac5fed8daa4ef625a24a87a7ee344790b3d6fcf8f23db4c0f29eb176318485c",
+    "caption": "Applications filters show only the authorized Tenant A and Worker A, including revision 4 recovery."
+  },
+  {
+    "frame": 19,
+    "captured_at": "2026-10-13T13:04:32.382Z",
+    "screenshot_sha256": "4f4b8f35db113b8213da015079f21ceddedafe804c4715ab23331b4004359141",
+    "caption": "Tenant A Owner is denied when opening the known Tenant B application; no foreign details are exposed."
+  },
+  {
+    "frame": 20,
+    "captured_at": "2026-10-13T13:05:20.108Z",
+    "screenshot_sha256": "d5aa3c3c8e15c397043b109079c3c05ec5e0a923a89ddf74d60ce57078ca93ae",
+    "caption": "Viewer sees actual Ready/Conditions and preserved releases, with no deployment, rollback or delete controls."
+  },
+  {
+    "frame": 21,
+    "captured_at": "2026-10-13T13:05:20.422Z",
+    "screenshot_sha256": "93fc44208c7aa68fc8808d2f35538ea86c73ebeacd561da41b2bdc9ab6856ae2",
+    "caption": "Viewer is denied access to platform-wide Prometheus metrics by server-side authorization."
+  }
+]

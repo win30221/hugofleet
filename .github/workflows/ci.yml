@@ -1,0 +1,92 @@
+name: HugoFleet M0-M5 checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GOMAXPROCS: "2"
+  GOFLAGS: "-p=2"
+
+concurrency:
+  group: hugofleet-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  oidc:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - run: make tools
+      - run: make test-oidc
+
+  unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - run: make tools
+      - run: make operator-tools envtest verify-generated proto-tools proto-check
+      - run: make helm-tools m5-chart-test
+      - run: make lint build docs-check test-unit test-race
+
+  envtest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - run: make tools operator-tools envtest
+      - run: make test-integration
+
+  kind-e2e:
+    name: kind M${{ matrix.milestone }} E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - milestone: 0
+            target: test-e2e-m0
+          - milestone: 1
+            target: test-e2e-m1
+          - milestone: 2
+            target: test-e2e
+          - milestone: 3
+            target: test-e2e-m3
+          - milestone: 4
+            target: test-e2e-m4
+          - milestone: 5
+            target: test-e2e-m5
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Runner resources before kind E2E
+        run: |
+          nproc
+          free -h
+          df -h "$GITHUB_WORKSPACE" /var/lib/docker
+          docker system df
+      - run: make tools doctor
+      - if: matrix.milestone == 5
+        run: make helm-tools m5-chart-test
+      - run: make demo-image-build operator-image-build ${{ matrix.target }}
+      - name: Runner resources after kind E2E
+        if: always()
+        run: |
+          free -h
+          df -h "$GITHUB_WORKSPACE" /var/lib/docker
+          docker system df

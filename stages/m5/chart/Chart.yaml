@@ -1,0 +1,7 @@
+apiVersion: v2
+name: hugofleet-worker
+description: Restricted HugoFleet Operator and outbound mTLS Agent for a prepared Worker
+type: application
+version: 0.5.0
+appVersion: m5
+kubeVersion: '>=1.37.0-0 <1.38.0-0'

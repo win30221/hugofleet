@@ -1,0 +1,22 @@
+/.tools/
+/.cache/
+/bin/
+/artifacts/
+/.local/
+.env
+.env.*
+!.env.example
+*.db
+*.db-shm
+*.db-wal
+*.db.lock
+*.sqlite*
+*.key
+*.pem
+*.p12
+*.pfx
+coverage.out
+# Ignore artifacts from earlier tooling revisions as well.
+node_modules/
+__pycache__/
+*.pyc

@@ -1,0 +1,26 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  apiServerAddress: "127.0.0.1"
+  apiServerPort: 16443
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        apiVersion: kubeadm.k8s.io/v1beta4
+        kind: ClusterConfiguration
+        etcd:
+          local:
+            # M0-M3 local throwaway profile: /run tmpfs avoids slow host fsync.
+            # Restarting the Docker node loses this development cluster's data.
+            dataDir: /run/hugofleet-etcd
+      - |
+        apiVersion: kubeadm.k8s.io/v1beta4
+        kind: InitConfiguration
+        timeouts:
+          kubernetesAPICall: 15m0s
+          controlPlaneComponentHealthCheck: 8m0s
+      - |
+        apiVersion: kubelet.config.k8s.io/v1beta1
+        kind: KubeletConfiguration
+        runtimeRequestTimeout: 10m0s

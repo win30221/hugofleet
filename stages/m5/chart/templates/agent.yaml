@@ -1,0 +1,162 @@
+{{- if gt (int .Values.reconnectMinSeconds) (int .Values.reconnectMaxSeconds) }}
+{{- fail "reconnectMinSeconds must not exceed reconnectMaxSeconds" }}
+{{- end }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hugofleet-agent
+  namespace: hf-system
+  labels:
+    {{- include "hf.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hf.annotations" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: hugofleet-agent-ledger
+  namespace: hf-system
+  labels:
+    {{- include "hf.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hf.annotations" . | nindent 4 }}
+rules:
+  - apiGroups: ['']
+    resources: [configmaps]
+    resourceNames: [{{ .Values.ledger | quote }}]
+    verbs: [get, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hugofleet-agent-ledger
+  namespace: hf-system
+  labels:
+    {{- include "hf.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hf.annotations" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: hugofleet-agent
+    namespace: hf-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: hugofleet-agent-ledger
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hugofleet-agent
+  namespace: hf-system
+  labels:
+    {{- include "hf.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hf.annotations" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hugofleet-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hugofleet-agent
+      annotations:
+        platform.hugofleet.io/rollout: {{ .Values.rollout | quote }}
+    spec:
+      serviceAccountName: hugofleet-agent
+      terminationGracePeriodSeconds: 15
+      securityContext:
+        {{- include "hf.podSecurity" . | nindent 8 }}
+      containers:
+        - name: hugofleet-agent
+          image: {{ .Values.agentImage | quote }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - --hub={{ required "Resolve the actual owned Hub Docker IP." .Values.hubEndpoint }}
+            - --cluster={{ .Values.cluster }}
+            - --certs=/certs
+            - --version=m5
+            - --heartbeat={{ .Values.heartbeatSeconds }}s
+            - --reconnect-min={{ .Values.reconnectMinSeconds }}s
+            - --reconnect-max={{ .Values.reconnectMaxSeconds }}s
+            - --ledger-namespace=hf-system
+            - --tenants={{ join "," .Values.tenants }}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          securityContext:
+            {{- include "hf.security" . | nindent 12 }}
+          volumeMounts:
+            - name: certs
+              mountPath: /certs
+              readOnly: true
+      volumes:
+        - name: certs
+          secret:
+            secretName: {{ .Values.tlsSecret }}
+            defaultMode: 0444
+            items:
+              - key: ca.crt
+                path: ca.crt
+              - key: client.crt
+                path: {{ .Values.cluster }}.crt
+              - key: client.key
+                path: {{ .Values.cluster }}.key
+{{- range $tenant := .Values.tenants }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: hugofleet-agent
+  namespace: hf-{{ $tenant }}
+  labels:
+    {{- include "hf.labels" $ | nindent 4 }}
+    platform.hugofleet.io/tenant: {{ $tenant | quote }}
+  annotations:
+    {{- include "hf.annotations" $ | nindent 4 }}
+rules:
+  - apiGroups: [platform.hugofleet.io]
+    resources: [applications]
+    verbs: [get, list, create, update, delete]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets]
+    verbs: [get, list]
+  - apiGroups: ['']
+    resources: [services, pods]
+    verbs: [get, list]
+  - apiGroups: ['']
+    resources: [resourcequotas]
+    resourceNames: [hugofleet-quota]
+    verbs: [get]
+  - apiGroups: ['']
+    resources: [limitranges]
+    resourceNames: [hugofleet-limits]
+    verbs: [get]
+  - apiGroups: ['']
+    resources: [configmaps]
+    resourceNames: [hugofleet-tenant-bootstrap]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hugofleet-agent
+  namespace: hf-{{ $tenant }}
+  labels:
+    {{- include "hf.labels" $ | nindent 4 }}
+    platform.hugofleet.io/tenant: {{ $tenant | quote }}
+  annotations:
+    {{- include "hf.annotations" $ | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: hugofleet-agent
+    namespace: hf-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: hugofleet-agent
+{{- end }}

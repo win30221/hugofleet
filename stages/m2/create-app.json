@@ -1,0 +1,7 @@
+{
+  "name": "pricing-api",
+  "cluster_id": "local-kind",
+  "expected_desired_revision": 0,
+  "image": "pricing-api:v1",
+  "replicas": 1
+}

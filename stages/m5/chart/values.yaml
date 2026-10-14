@@ -1,0 +1,17 @@
+# Security namespaces, quota, policy, TLS and ledger are prepared separately.
+# Set the current owned Hub's actual Docker IP through the M5 control script.
+cluster: hugofleet-a
+hubEndpoint: ''
+tenants:
+  - team-a
+  - team-b
+tlsSecret: hugofleet-agent-tls
+ledger: hugofleet-agent-ledger
+operatorImage: hugofleet-operator:m1
+agentImage: hugofleet-agent:m5
+# Integer seconds; keep the Hub heartbeat timeout above heartbeatSeconds.
+heartbeatSeconds: 5
+reconnectMinSeconds: 1
+reconnectMaxSeconds: 30
+# Increment to exercise an actual bounded upgrade/restart without replacing data.
+rollout: 1
