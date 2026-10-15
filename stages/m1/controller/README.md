@@ -79,4 +79,4 @@ CRD／RBAC 由 markers 生成，命令見 [M1 程式導讀](../README.md#本階�
 
 ProgressDeadlineExceeded 也須歸屬目前 owned／observed ReplicaSet：condition LastUpdateTime 不得早於 ReplicaSet CreationTimestamp 加上設定的 progressDeadlineSeconds。舊逾時不能立即讓新回滾失敗；無法歸屬時維持 Progressing，Hub 仍受原 operation deadline 限制。Operator 不自行改寫 Deployment status 或製造 Ready；完整決策見 [ADR 0012](../../../docs/adr/0012-current-revision-replicaset-evidence.md)。
 
-Unit 可用可控物件測比對與錯誤，envtest 用真實 API server 測 schema／status／ownership，kind 才驗證 Pod、GC、漂移與真實 HTTP。現有測試保留，本輪結果另存於 [搬移後重新驗證](../../../docs/revalidation-20261011.md)；歷史範圍看 [M1 紀錄](../../../docs/m1-validation.md)。
+Unit 可用可控物件測比對與錯誤，envtest 用真實 API server 測 schema／status／ownership，kind 才驗證 Pod、GC、漂移與真實 HTTP。驗收範圍見 [M1 驗收](../../../docs/m1-validation.md)，跨階段檢查與 CI 證據見 [驗證總覽](../../../docs/validation.md)。

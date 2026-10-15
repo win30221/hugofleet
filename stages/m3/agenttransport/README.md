@@ -66,4 +66,4 @@ CR 已提交後，Runner 仍要 Observe 到真正 Ready 才 Store.Finish SUCCEED
 
 協定入口是 [control.proto](../api/proto/hugofleet/agent/v1/control.proto)，生成的程式在 api/agent/v1。型別／hash 轉換在 agentprotocol。改協定要同時考慮 Hub／Agent 的欄位與驗證，再用固定工具生成；`make proto`／`proto-check` 的操作見 [M3 導讀](../README.md#本階段的程式導讀)。
 
-TLS、registry 與 Hello 必須一起核對；不新增任意 shell／YAML payload。重啟／ACK 遺失、負向 TLS、雙 kind 的實測見 [M3 紀錄](../../../docs/m3-validation.md)。本輪實測結果另見 [搬移後重新驗證](../../../docs/revalidation-20261011.md)。
+TLS、registry 與 Hello 必須一起核對；不新增任意 shell／YAML payload。重啟／ACK 遺失、負向 TLS、雙 kind 的實測見 [M3 紀錄](../../../docs/m3-validation.md)。跨階段驗證方式見 [驗證總覽](../../../docs/validation.md)。

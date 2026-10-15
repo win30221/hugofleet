@@ -8,7 +8,7 @@
 
 Hub 保存部署意圖與履歷；Agent 在自己的 Worker 執行受限型別命令；Operator 持續維持工作負載。mTLS 驗證 Hub／Agent 的雙方身分，Demo Token 則驗證本機管理者的 HTTP 請求，兩者用途不同。
 
-2026-10-11 已恢復實測，結果見 [搬移後重新驗證](../../docs/revalidation-20261011.md)；以下預期供操作時核對。閱讀路線：[檔案地圖](#檔案地圖) → [啟動與登入](#啟動與登入) → [建立兩個應用](#建立應用後怎麼確認) → [真實 HTTP](#實際呼叫兩個-worker) → [離線／重連](#斷線修復與重連練習) → [故障與回滾](#故障版本與回滾練習) → [結束／再用](#結束再啟動與憑證輪替) → [診斷](#操作遇到問題時) → [程式導讀](#本階段的程式導讀)。
+閱讀路線：[檔案地圖](#檔案地圖) → [啟動與登入](#啟動與登入) → [建立兩個應用](#建立應用後怎麼確認) → [真實 HTTP](#實際呼叫兩個-worker) → [離線／重連](#斷線修復與重連練習) → [故障與回滾](#故障版本與回滾練習) → [結束／再用](#結束再啟動與憑證輪替) → [診斷](#操作遇到問題時) → [程式導讀](#本階段的程式導讀)。
 
 ## 檔案地圖
 
@@ -29,7 +29,7 @@ Hub 保存部署意圖與履歷；Agent 在自己的 Worker 執行受限型別�
 | [config/agent/install.yaml](config/agent/install.yaml) | Agent SA／Role／Binding、ledger、Deployment | 手寫模板；HUB_ENDPOINT／CLUSTER_ID 由啟動流程代換，不能原樣 apply |
 | [build/agent.Dockerfile](build/agent.Dockerfile) | Worker Agent 映像 | 修改 Agent Go 後重建／載入／重啟 |
 | [scripts/control.sh](scripts/control.sh) | 憑證、Hub mounts、雙 Worker、endpoint 解析、清理 | 想理解 up 看這裡；學習通常用 run／Make |
-| [scripts/e2e.sh](scripts/e2e.sh)／[test/e2e](test/e2e/) | 真實雙 kind、權限、重送／重啟／GC 驗收 | 專用測試環境，結果另見本輪紀錄 |
+| [scripts/e2e.sh](scripts/e2e.sh)／[test/e2e](test/e2e/) | 真實雙 kind、權限、重送／重啟／GC 驗收 | 專用測試環境，測試範圍見階段驗收文件 |
 
 M3 共用的 Hub 與 UI 仍在 [M2](../m2/hub/README.md)，Operator 在 [M1](../m1/controller/README.md)，價格服務在 [M0](../m0/pricing-api/README.md)。本頁最後列出 M3 修改的 M2 檔案。
 
@@ -284,13 +284,13 @@ make m3-hub-up   # 同一容器、DB、憑證再啟動，Agent 自動重連
 | m3-hub-recreate | 同 Worker／DB，重建 Hub 容器 | 替換 owned Hub 容器；Docker IP 可能變，再 agent-install |
 | agent-install | 更新 Agent endpoint／安裝配置 | 解析目前 Hub IP，對 A／B 載入既有 Agent 映像、安裝／重啟 |
 | certs-dev | 同 state 尚無 CA 時準備憑證 | 已有 CA 時重用，不自動延長到期時間 |
-| m3-down | 本輪完整結束 | 限定清理 Hub／雙 kind，保留 state 檔案 |
+| m3-down | 結束環境 | 限定清理 Hub／雙 kind，保留 state 檔案 |
 
 M3 主程式／映像共用目前來源。只修改 Agent Go 後執行 agent-install 不會替你編新映像；先建置映像再載入／重啟。只改 policy.json 也不會變更原 Hub 容器裡的檔案。
 
 ### 同 Worker／DB 更新 Hub 程式或 policy
 
-這是需要重新建置時的開發操作，執行結果另見本輪紀錄。保留同一 HF_M3_STATE，以專案根目錄操作：
+這是需要重新建置時的開發操作，執行測試範圍見階段驗收文件。保留同一 HF_M3_STATE，以專案根目錄操作：
 
 ```bash
 source stages/m3/env.sh a
@@ -316,7 +316,7 @@ state 的主要檔案：db/hub.db（含 WAL／鎖）、certs/（leaf／Token）�
 
 ## 驗證與診斷
 
-下方自動驗收命令供開發選用，實測結果另存於本輪紀錄，不需先跑全套才閱讀本課。
+下方自動驗收命令供開發選用，測試範圍見階段驗收文件，不需先跑全套才閱讀本課。
 
 本階段理解檢查：
 
@@ -381,7 +381,7 @@ docker inspect --format '{{(index .NetworkSettings.Networks "kind").IPAddress}}'
 | 18090 connection refused | 確認 Hub 容器存在／執行，是否上一課仍占 port；M2 與 M3 一次只開一個 |
 | 403／unexpected Host | 用精確 127.0.0.1:18090，不改成 localhost；核對 Token／session 或 gateway 拒絕日誌 |
 | UI 回到登入 | session 到期或這輪 Token 不同；用同 state 的 Token 登入 |
-| TLS unknown CA／expiry／SAN | 核對本輪 state 和憑證；不關閉 TLS 驗證，到期使用新 state 重建 |
+| TLS unknown CA／expiry／SAN | 核對目前 state 和憑證；不關閉 TLS 驗證，到期使用新 state 重建 |
 | CONNECTED 一直沒有出現 | 查 Agent rollout／日誌、endpoint、Hub IP、憑證 identity 與 Hello；重建 Hub 後 agent-install |
 | duplicate／draining session | 同 cluster 已有連線或舊命令未排空；等舊 session 收尾，不加第二個 Agent 副本搶身分 |
 | A 離線、B 操作也看似失敗 | 分別讀 /api/v1/clusters 與 B 應用 Operation；全域 /readyz 不能代替 B 狀態 |
@@ -423,6 +423,6 @@ M3 同時修改以下 **M2 共用程式**，所以在 m2 資料夾找得到目�
 | [httpapi/auth.go](../m2/hub/httpapi/auth.go)、[server.go](../m2/hub/httpapi/server.go) | Token／session、gateway／Host／Origin／CSRF 檢查 |
 | [UI template](../m2/web/templates/index.html) | A／B 選擇、Agent 聯絡時間／狀態／錯誤 |
 
-單階段開發可用 make m3-build／m3-test；協定修改才需要 make proto-tools／proto 重新生成，再用 proto-check 核對。這些與首次 up 是不同用途，完整驗收入口見上方「驗證與診斷」，本輪執行結果另見重新驗證紀錄。
+單階段開發可用 make m3-build／m3-test；協定修改才需要 make proto-tools／proto 重新生成，再用 proto-check 核對。這些與首次 up 是不同用途，完整驗收入口見上方「驗證與診斷」，測試範圍與證據見 [驗證總覽](../../docs/validation.md)。
 
 Hub 的映像建置檔仍在 [M2 build/hub.Dockerfile](../m2/build/hub.Dockerfile)；本資料夾的 [scripts/control.sh](scripts/control.sh) 組裝 Hub／雙 Worker；教學入口 [run.sh](run.sh) 選用本階段 runtime 目錄。讀完應能說明 Hub 與 Worker 的權限邊界、ACK 與 Ready 的差別、重送為何不覆蓋新版本。後續獨立操作見 [M4](../m4/README.md) 與 [M5](../m5/README.md)，先用本階段的原 state 執行 down 再切換。

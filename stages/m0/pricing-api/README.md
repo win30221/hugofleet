@@ -40,7 +40,7 @@ main 的 version 預設 v1，Dockerfile 用 APP_VERSION 與 Go linker 注入 v1�
 
 ## 只在本機理解 Go API
 
-下面是可選的輕量練習，不建立 kind。命令仍在專案根目錄的 WSL Bash 執行；結果另見 [本輪紀錄](../../../docs/revalidation-20261011.md)：
+下面是可選的輕量練習，不建立 kind。命令在專案根目錄的 WSL Bash 執行：
 
 ```bash
 cd /mnt/c/Users/H/Documents/GitHub/win30221/hugofleet

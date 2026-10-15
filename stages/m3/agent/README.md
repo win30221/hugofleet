@@ -91,4 +91,4 @@ Agent SA 可操作 hf-demo 的 Application、讀必要工作負載狀態，以�
 
 改連線與退避看 client.go，改命令接受／去重看 engine.go，改 wire 型別看 proto／projection，改 CR 核對看共用 kube transport。不要直接改生成的 pb.go，也不要藉 RBAC 擴大成管理員工具。
 
-診斷命令與離線練習見 [M3](../README.md#操作遇到問題時)。Unit 的可控 backend 用來測特定規則；真實 TLS／雙 Worker／恢復與 GC 的實測看 [M3 紀錄](../../../docs/m3-validation.md)，最新結果另見 [搬移後重新驗證](../../../docs/revalidation-20261011.md)。
+診斷命令與離線練習見 [M3](../README.md#操作遇到問題時)。Unit 的可控 backend 用來測特定規則；真實 TLS／雙 Worker／恢復與 GC 的實測看 [M3 紀錄](../../../docs/m3-validation.md)；跨階段驗證方式見 [驗證總覽](../../../docs/validation.md)。

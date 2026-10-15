@@ -608,7 +608,7 @@ UX 規則：
 
 ## 12. Repository 結構
 
-依使用者的分階段學習要求，實際程式、設定、Dockerfile 與 Go 測試依最初引入的階段分類；保留單一 Go module。入口與修改對照見 [程式索引](stages/README.md)／[ADR 0009](docs/adr/0009-stage-source-layout.md)。
+為方便逐階段學習，實際程式、設定、Dockerfile 與 Go 測試依最初引入的階段分類；保留單一 Go module。入口與修改對照見 [程式索引](stages/README.md)／[ADR 0009](docs/adr/0009-stage-source-layout.md)。
 
 ```text
 hugofleet/
@@ -621,14 +621,14 @@ hugofleet/
 │   ├── m2/                           # hub、cmd/hub/bootstrap-hub、web、config、build、test
 │   ├── m3/                           # agent、profile/protocol/TLS/transport、api/proto、cmd、config、build、test
 │   ├── m4/                           # OIDC/session、租戶 API/template、受控 bootstrap、真實安全驗收
-│   └── m5/                           # Dashboard、telemetry、Helm／交付與驗收（實作中）
+│   └── m5/                           # Dashboard、telemetry、Helm／交付與驗收
 ├── tools/doccheck/                   # 共用文件驗證工具
 ├── scripts/                         # 共用開發／Docker／kind 工具與固定版本
 ├── deploy/kind/                     # 共用 kind node 設定
 └── docs/                            # API／OpenAPI、ADR、驗收紀錄；階段操作與切換在 stages
 ```
 
-M1 API／controller 與 M2 Hub 套件跨階段共用，不放在會阻止跨階段 import 的 internal 目錄。M3／M4 延用並修改 M2 Hub，導讀列明修改檔案；不複製歷史實作。M4／M5 已完成實作及本機驗收、最新 M1～M4 回歸；實際範圍見 [M4 紀錄](docs/m4-validation.md)／[M5 紀錄](docs/m5-validation.md)；本次修正與 Hosted CI 狀態見 [最新驗證紀錄](docs/release-validation-20261014.md)。運行資料位於 Git 忽略的 .local/tutorials 對應階段，建置工具、快取及 artifacts 也忽略。
+M1 API／controller 與 M2 Hub 套件跨階段共用，不放在會阻止跨階段 import 的 internal 目錄。M3／M4 延用並修改 M2 Hub，導讀列明修改檔案；不複製歷史實作。M0～M5 的實作與測試範圍見各階段教學及 [驗證總覽](docs/validation.md)。運行資料位於 Git 忽略的 .local/tutorials 對應階段，建置工具、快取及 artifacts 也忽略。
 
 每個階段自己的 README.md 集中完整教學及程式導讀，根目錄放 run.sh 與可修改 YAML／JSON，scripts/ 放該階段的啟動／工具／驗收 Bash。各階段所需檔案可由同一資料夾找到。
 
@@ -657,7 +657,7 @@ M1 API／controller 與 M2 Hub 套件跨階段共用，不放在會阻止跨階�
 - 可查 `pricing-api` 版本與價格計算結果。
 - `make test-unit` 全綠。
 - `v1` / `v2-good` rollout 完成，真實 `/version` 與 `/quote` 結果正確；`v2-broken` 程序存活、readiness 失敗、新 rollout 回報 ProgressDeadlineExceeded。
-- 基礎 CI 定義已建立；本機與 GitHub Hosted CI 的實際執行結果分開報告，最新狀態見 [完整驗證紀錄](docs/release-validation-20261014.md)。
+- M0 CI 涵蓋價格規則與三版映像的 kind E2E；跨階段 CI 的執行方式及對應提交的證據見 [驗證總覽](docs/validation.md)。
 
 ### M1 — 核心 Kubernetes Operator（第一個重要里程碑）
 
@@ -902,9 +902,9 @@ make demo               # M2 舊開發入口；保留早期階段的獨立入口
 - ConnectRPC：https://connectrpc.com/docs/
 - Gateway API：https://gateway-api.sigs.k8s.io/
 
-## 19. 交給 AI 的第一則開發指令（複製使用）
+## 19. 開發任務範圍
 
-> 請以本文件 `HUGOFLEET_SPEC.md` 為唯一的產品與技術規格基準，逐階段建立 HugoFleet。現在**只做 M0**：建立 Repo 基礎、單節點 kind、Go `pricing-api`（包含三個測試版本）、Dockerfile、Makefile、測試與 README。不要預先開發 M1–M5，也不要加入 LLM/KServe/Istio/Ceph。先檢查目前開發環境與官方相容版本，再提出本階段的檔案清單與最小垂直切片；實作後執行能執行的測試，回報完整驗收結果、實際命令與未驗證項目。不得以 Mock 代替最終 kind 驗收。
+M0～M5 各有可執行實作、教學與驗收入口。修改前先確認指定階段與受影響的共用元件，再依第 17 節選擇相關驗證；不要重新建立空骨架或提前擴展功能。實際命令、程式提交與驗收限制見 [驗證總覽](docs/validation.md)。
 
 ---
 

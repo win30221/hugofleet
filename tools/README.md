@@ -4,7 +4,7 @@
 
 這裡放專案自行維護的 Go 工具；[scripts](../scripts/README.md) 放 Bash 流程；.tools 放下載／安裝完成的外部工具。它們分工不同，維持分開。
 
-各階段的 Go 驗收工具與 E2E 仍放在自己的 [stages 資料夾](../stages/README.md)。2026-10-11 已恢復文件與功能檢查，結果見 [本輪紀錄](../docs/revalidation-20261011.md)。
+各階段的 Go 驗收工具與 E2E 仍放在自己的 [stages 資料夾](../stages/README.md)。驗證方式與證據見 [驗證總覽](../docs/validation.md)。
 
 ## doccheck 怎麼用與怎麼看結果
 

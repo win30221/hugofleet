@@ -1,8 +1,8 @@
 # M5：Dashboard、可觀測部署與安全交付
 
-**實作與首次本機驗收完成**。結果見 [M5 紀錄](../../docs/m5-validation.md)，設計見 [ADR 0011](../../docs/adr/0011-observability-and-delivery.md)。完整 Unit／race／envtest／build、全新正式雙叢集安全／Dashboard／trace／Helm lifecycle、真實瀏覽器示範及最新 M1～M4 回歸均已通過；下列教學的預期結果仍須由實際操作核對，不把文字更新當成新實測。
+本階段整合安全 Hub、雙 Worker 與 Helm，提供應用狀態、跨程序追蹤、指標與交付流程。驗收範圍見 [M5 驗收](../../docs/m5-validation.md)，設計見 [ADR 0011](../../docs/adr/0011-observability-and-delivery.md)。
 
-2026-10-14 先前本機交付已完成；使用者接著授權 [稽核修正](../../docs/audit-m0-m5-20261014.md)、M0～M5 完整重驗，以及通過後提交／推送並驗證 GitHub Actions。本次修正、完整重驗與 Hosted CI 狀態見 [最新驗證紀錄](../../docs/release-validation-20261014.md)，不能由既有本機 PASS 推定遠端通過。
+測試方式與對應程式提交的 Hosted CI 證據見 [驗證總覽](../../docs/validation.md)。
 
 ## 從主目錄開始
 
@@ -170,7 +170,7 @@ make test-e2e-m5
 
 test-e2e-m5 使用新的 .local/m5-e2e-* state、專用 hugofleet-m5-e2e-a／b Workers 與 Hub／Dex；若同名資源已存在會拒絕接管，須先用其原 state 的正式 down 清理。入口自行建置映像、完成兩個 Worker／Helm／真實 Dex 登入，依序跑完整 M4 安全套件及 M5 Dashboard／trace／Helm lifecycle，最後收集診斷並清理 owned 容器。原始結果在 artifacts/m5-e2e，私有 state 保留；啟動、測試或清理失敗都回傳非零，不能只看其中一個 PASS。
 
-完整 Unit／race／envtest、全新 M5 正式 kind 入口與受影響的 M1～M4 回歸已通過，結果見驗收紀錄；Hosted CI 結果以 [最新驗證紀錄](../../docs/release-validation-20261014.md) 為準。[Demo 播放頁](../../docs/media/m5-demo.html) 與 [MP4](../../docs/media/m5-demo.mp4) 使用真實瀏覽器操作截圖按順序剪輯，並非連續錄影；等待片段已省略。影片展示部署、漂移修復、壞版、確認回滾、Worker 斷線／恢復、跨租戶與 metrics 拒絕；[擷取時間與 SHA-256](../../docs/media/m5-demo-captures.json) 可供核對。[實際回滾 trace](../../docs/media/m5-rollback-trace.html) 由 Hub／Agent／Operator 已收集 JSON spans 產生。
+Unit／race／envtest、M5 kind 入口與 Helm lifecycle 的驗收範圍見 [M5 驗收](../../docs/m5-validation.md)；對應程式提交的 Hosted CI 證據見 [驗證總覽](../../docs/validation.md)。[Demo 播放頁](../../docs/media/m5-demo.html) 與 [MP4](../../docs/media/m5-demo.mp4) 使用真實瀏覽器操作截圖按順序剪輯，並非連續錄影；等待片段已省略。影片展示部署、漂移修復、壞版、確認回滾、Worker 斷線／恢復、跨租戶與 metrics 拒絕；[來源 metadata 與 SHA-256](../../docs/media/m5-demo-captures.json) 可供核對。[實際回滾 trace](../../docs/media/m5-rollback-trace.html) 由 Hub／Agent／Operator 已收集 JSON spans 產生。
 
 ## 限制
 

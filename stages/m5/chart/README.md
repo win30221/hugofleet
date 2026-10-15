@@ -53,4 +53,4 @@ helm upgrade hugofleet-worker stages/m5/chart \
 
 卸載會移除 Helm 所有的 Operator／Agent／RBAC，原應用的 Pods／CR 與 bootstrap 安全材料保留；當地 Operator 在卸載期間停止維護。重新安裝仍使用原 ledger，不能重設高水位或 tombstone。CRD 的首次安裝與後續升級遵循 Helm CRD lifecycle，不能用 uninstall 當作 CRD migration。
 
-開發環境的 install／upgrade／uninstall／reinstall、ledger／receipt UID 及高水位保留已實測通過；全新正式入口結果見 [M5 驗收](../../../docs/m5-validation.md)。render 與 cluster lifecycle 的證據分開記錄。
+真實 install／upgrade／uninstall／reinstall、ledger／receipt UID 及高水位保留的驗收範圍見 [M5 驗收](../../../docs/m5-validation.md)。render 與 cluster lifecycle 的證據分開記錄。

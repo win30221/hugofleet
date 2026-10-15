@@ -8,8 +8,6 @@ M0 展示 Go pricing-api、三種真實映像、Docker／kind 與原生 Kubernet
 
 按本指南完成原生工作負載練習，再進入 [M1 Operator 教學](../m1/README.md)。學到 Hub 時，可用 [M2 功能教學](../m2/README.md) 理解整個部署流程。
 
-2026-10-11 已恢復實測，結果見 [搬移後重新驗證](../../docs/revalidation-20261011.md)；以下預期供操作時核對。
-
 閱讀路線：[檔案地圖](#檔案地圖) → [準備與首次啟動](#1-準備環境與獨立-demo) → [呼叫](#3-轉送與呼叫) → [更新](#4-更新健康版本與縮放) → [壞版](#5-觀察壞版與手動恢復) → [結束](#6-結束再使用與切換階段) → [問題排查](#操作遇到問題時) → [程式導讀](#本階段的程式導讀)。
 
 ## 檔案地圖
@@ -270,7 +268,7 @@ make m0-down
 
 ## 7. 測試與證據
 
-以下是開發驗證選項，不是閱讀本課的必做前置；是否已執行與結果見本輪紀錄。
+以下是開發驗證選項，不是閱讀本課的必做前置；驗收範圍見階段驗收文件。
 
 進入 M1 前，先確認自己能回答：
 
@@ -300,7 +298,7 @@ make test-e2e-m0
 
 E2E 使用獨立 hugofleet-m0-e2e，驗證三個映像的 HTTP、價格、rollout、Broken readiness／無 liveness restart、Ready endpoints 排除與 v1 恢復；保存 artifacts/m0-e2e/&lt;run&gt; 並清理本次叢集。現有同名叢集會讓測試停止；檢查 ownership 與診斷後才以 `HF_CLUSTER=hugofleet-m0-e2e make kind-down` 重試清理。`m0-down` 固定作用於學習叢集，不用來清理 E2E。
 
-既有本機結果見 [M0 驗收紀錄](../../docs/m0-validation.md) 及 [M2 紀錄的三階段回歸](../../docs/m2-validation.md)。本輪 E2E 結果另見重新驗證紀錄。port-forward 驗證選定 Pod 的 HTTP，EndpointSlice 驗證就緒資訊，不等於驗證 kube-proxy／CNI 一般資料路徑。
+驗收範圍見 [M0 驗收](../../docs/m0-validation.md)。port-forward 驗證選定 Pod 的 HTTP，EndpointSlice 驗證就緒資訊，不等於驗證 kube-proxy／CNI 一般資料路徑。
 
 ## 本階段的程式導讀
 
@@ -317,7 +315,7 @@ M0 新增可執行的 pricing-api 與驗收工具。它直接使用 Kubernetes D
 
 `*_test.go` 與受測程式放在同一套件。完整 kind 驗收由本資料夾的 [scripts/e2e.sh](scripts/e2e.sh) 串接；教學啟動則用 [workload.yaml](workload.yaml)，可在這份教學範例做練習。
 
-單階段開發可用 make m0-build／m0-test，benchmark 與完整驗收見第 7 節。這些與首次 up 是不同用途，本輪結果另存於重新驗證紀錄。
+單階段開發可用 make m0-build／m0-test，benchmark 與完整驗收見第 7 節。這些與首次 up 是不同用途，驗收範圍見 [驗證總覽](../../docs/validation.md)。
 
 後面階段沿用同一 pricing-api；M0 的工作負載由原生 manifest 建立，M1 起改由 Operator 產生。讀完後應能沿著 HTTP 請求找到價格規則，並解釋壞版為何 healthz 正常而 readyz 失敗，再往 [M1](../m1/README.md) 走。
 

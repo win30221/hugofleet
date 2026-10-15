@@ -2,7 +2,7 @@
 
 每個階段所需的程式、YAML／JSON、Bash、Dockerfile、測試與完整教學集中在自己的資料夾。**打開該階段的 README.md 就能開始**；文件也列出新增了什麼、程式閱讀順序及沿用前面哪些元件。
 
-2026-10-11 已恢復 M0～M3 驗證，從根 README 沿各課與元件說明核對命令及實際結果，見 [搬移後重新驗證](../docs/revalidation-20261011.md)。M4／M5 也已完成既有本機驗收，見 [M4](../docs/m4-validation.md)／[M5](../docs/m5-validation.md)。2026-10-14 的 [稽核修正與完整重驗](../docs/audit-m0-m5-20261014.md) 正在進行，未完成項目不列為通過。
+M0～M5 各有獨立入口與驗收工具。環境準備見 [根 README](../README.md)，測試方式與證據見 [驗證總覽](../docs/validation.md)。
 
 ## 這些文件怎麼使用
 
@@ -11,7 +11,7 @@
 | 選課、知道後面會增加什麼、切換環境 | 本頁 |
 | 從零開始操作某階段、解讀結果與排查問題 | 各階段根目錄的 README |
 | 追一個請求、理解程式內部設計、找修改位置 | [pricing-api](m0/pricing-api/README.md)、[Controller](m1/controller/README.md)、[Hub](m2/hub/README.md)、[Agent](m3/agent/README.md)、[Hub Transport](m3/agenttransport/README.md) 的 README |
-| 查精確 API 欄位、設計原因、以前實際跑過的結果 | [docs](../docs/README.md) |
+| 查精確 API 欄位、設計原因、驗收範圍與證據 | [docs](../docs/README.md) |
 
 先跟著操作，再沿程式導讀理解原因。教學中的「預期結果」是操作時要核對的行為；測試證據另在 docs，不把文件更新當成新一輪驗收。
 
@@ -71,20 +71,20 @@ stages/
 
 同一個 Go module 依最初引入的階段分類。M1～M3 沿用 M0 應用；M2／M3 沿用 M1 Operator；M3 沿用並擴充 M2 Hub。共用程式只維護一份，後續修改的位置會在各導讀標明。若只學 M0，先看 m0 即可。
 
-「可獨立啟動」指每個入口自行準備需要的元件，並使用分開的叢集與資料；程式是目前版本的共用來源，並非各階段的歷史快照。M2／M3 不要求前面各 Demo 持續執行。
+「可獨立啟動」指每個入口自行準備需要的元件，並使用分開的叢集與資料；程式是目前版本的共用來源，各階段共用同一份現行實作。M2／M3 不要求前面各 Demo 持續執行。
 
 | 想找什麼 | 現在的位置 |
 |---|---|
-| 原 `examples/pricing-api`、`cmd/m0check` | [m0](m0/README.md) |
-| 原 `api/v1alpha1`、`internal/controller`、`cmd/operator`、M1 config／E2E | [m1](m1/README.md) |
-| 原 `internal/hub`、`cmd/hub`／bootstrap-hub、`web`、M2 config／E2E | [m2](m2/README.md) |
-| 原 `api/agent`／proto、`internal/agent*`／devcert、Hub agenttransport、M3 cmd／config／E2E | [m3](m3/README.md) |
+| 價格 API、HTTP／工作負載驗收 | [m0](m0/README.md) |
+| Application 型別、Operator、M1 config／E2E | [m1](m1/README.md) |
+| Hub、bootstrap-hub、UI、M2 config／E2E | [m2](m2/README.md) |
+| Agent 協定／Proto、devcert、Hub transport、M3 cmd／config／E2E | [m3](m3/README.md) |
 | 文件檢查程式 | [tools/doccheck](../tools/doccheck/main.go) |
 | 每階段可以修改的 YAML／JSON、操作 Bash | 本階段資料夾的根目錄與 scripts/，見各 README |
 | 執行後產生的 kubeconfig／DB／憑證 | `.local/tutorials/m0`～`m5`，Git 忽略 |
 | 驗收證據、API 契約、設計決策 | [docs](../docs/README.md) |
 
-跨階段共用的版本／Docker／kind 工具留在 [scripts](../scripts/)、[tools](../tools/)，kind 節點設定在 [deploy/kind](../deploy/kind/)；各階段文件都有連結。所有 Go 程式位於 stages 或 tools。目錄決策見 [ADR 0009](../docs/adr/0009-stage-source-layout.md)，切換與重建看下方說明。M4／M5 已完成本機驗收與最新前階段回歸，見 [M5 結果](../docs/m5-validation.md)；本次重驗與 Hosted CI 狀態見 [最新驗證紀錄](../docs/release-validation-20261014.md)。
+跨階段共用的版本／Docker／kind 工具留在 [scripts](../scripts/)、[tools](../tools/)，kind 節點設定在 [deploy/kind](../deploy/kind/)；各階段文件都有連結。所有 Go 程式位於 stages 或 tools。目錄決策見 [ADR 0009](../docs/adr/0009-stage-source-layout.md)，切換與重建看下方說明。各階段驗收與 Hosted CI 證據見 [驗證總覽](../docs/validation.md)。
 
 各階段「檔案地圖」會標明可修改的範例、手寫程式、生成檔案與執行產物。Dockerfile 的 build context 使用完整專案根目錄，因為共用同一 Go module；不要只拿某個子資料夾單獨當完整 build context。
 
@@ -178,7 +178,6 @@ M4 重建 Worker 也先以舊 HF_M4_STATE 執行 m4-down，再指定 `.local/tut
 | 主機執行檔／映像 | bin；Docker image store | 從正式原始碼建置；修改 Go 後須重建對應程式／映像 |
 | 工具／快取 | .tools、.cache 或已登記的 WSL 原生快取 | 共用環境，由 scripts 管理 |
 | 原始日誌 | artifacts | 找故障與既有實測證據，摘要在 docs |
-| 歷史草稿／備份 | .local/archive | 保留追溯，操作使用正式 stages 入口 |
 
 本機產物被 Git 忽略。不要先手動刪 kubeconfig／cluster.id／hub.id，它們是腳本辨認所屬叢集或容器的依據。DB、憑證、Token 也不當成一般快取清理。down 限定清理所屬的執行資源，保留主機資料。
 
@@ -200,4 +199,4 @@ M5 UI 使用 18095、Dex 使用 5557；預設 Worker 名稱仍為 hugofleet-a／
 
 M5 的 [scripts/control.sh](m5/scripts/control.sh) 組裝 Dashboard、telemetry、Dex 與 Helm Workers；[scripts/e2e.sh](m5/scripts/e2e.sh) 驗證完整安全套件及 traces／Helm lifecycle。
 
-每階段 run.sh 選定自己的學習叢集／執行資料，呼叫以上腳本。共用 kind 建立與 ownership 清理集中在 [scripts/kind.sh](../scripts/kind.sh)；[scripts/hf.sh](../scripts/hf.sh) 保留 Make 命令分派與跨階段開發命令。各階段 scripts/e2e.sh 保留完整驗收流程；本輪實測範圍見上方重新驗證紀錄。
+每階段 run.sh 選定自己的學習叢集／執行資料，呼叫以上腳本。共用 kind 建立與 ownership 清理集中在 [scripts/kind.sh](../scripts/kind.sh)；[scripts/hf.sh](../scripts/hf.sh) 保留 Make 命令分派與跨階段開發命令。各階段 scripts/e2e.sh 保留完整驗收流程；驗收範圍見 [驗證總覽](../docs/validation.md)。

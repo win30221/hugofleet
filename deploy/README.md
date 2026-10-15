@@ -4,9 +4,9 @@
 
 預設 etcd 使用 RAM profile；Docker node 停止／重啟後不能假設資料仍在。HF_ETCD_STORAGE 可選 memory／disk，既有本機實測範圍以 [驗收紀錄](../docs/README.md) 為準。
 
-目前冷啟動等待為 kubeadm API 15 分鐘、kubelet runtime 10 分鐘、control-plane health 8 分鐘，kind create 整體上限 30 分鐘。這些是有界啟動等待；仍須通過 Node／CoreDNS／CNI readiness，不能據此將未開始的應用 E2E 列為通過。CoreDNS 在 Node／CNI 就緒後先等 Available，接著檢查完整 rollout；不修改 progress deadline 或 status。最近的啟動失敗與重驗見 [M4 紀錄](../docs/m4-validation.md)。
+目前冷啟動等待為 kubeadm API 15 分鐘、kubelet runtime 10 分鐘、control-plane health 8 分鐘，kind create 整體上限 30 分鐘。這些是有界啟動等待；仍須通過 Node／CoreDNS／CNI readiness，不能據此將未開始的應用 E2E 列為通過。CoreDNS 在 Node／CNI 就緒後先等 Available，接著檢查完整 rollout；不修改 progress deadline 或 status。Security Profile 的驗收範圍見 [M4 驗收](../docs/m4-validation.md)。
 
-各階段專屬的 Deployment／Service、CRD／RBAC、Hub／Agent 設定已放回 [stages](../stages/README.md)，這裡只保留跨階段共用模板。
+各階段專屬的 Deployment／Service、CRD／RBAC、Hub／Agent 設定位於 [stages](../stages/README.md)，這裡只保留跨階段共用模板。
 
 ## 模板如何變成實際叢集
 

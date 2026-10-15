@@ -1,10 +1,10 @@
 # ADR 0012：以目前 revision 的 ReplicaSet 歸屬部署失敗
 
-日期：2026-10-14。狀態：已採納，最新 Unit／race／envtest 及 M1～M5 真實正式驗收通過，結果見 [M5 紀錄](../m5-validation.md)。Hosted CI 未執行。
+狀態：已採納。測試範圍見 [M1 驗收](../m1-validation.md) 與 [M5 驗收](../m5-validation.md)，程式提交與 CI 證據見 [驗證總覽](../validation.md)。
 
 ## 問題與證據
 
-M5 全新正式驗收在記憶體 quota 解除後發布 revision 2，卻立即得到 revision 1 的 FailedCreate。當時 Quota 已釋放；Deployment 的 observedGeneration 已推進，但 ReplicaFailure 仍帶著舊 ReplicaSet 的錯誤。整次驗收為 FAIL，原始紀錄保留於 artifacts/m5-e2e/20261013T215643-43083。
+記憶體 quota 解除後發布新 revision 時，即使 Deployment observedGeneration 已推進，ReplicaFailure 仍可能帶著舊 ReplicaSet 的 FailedCreate。若直接採用這個狀態，新操作會被舊版本錯誤終結為 FAILED。
 
 固定 Kubernetes 1.37 的 [Deployment controller](https://github.com/kubernetes/kubernetes/blob/v1.37.0/pkg/controller/deployment/progress.go) 會在新 ReplicaSet 沒有 failure 時，從舊 ReplicaSets 取得 failure；因此不能僅以 Deployment observedGeneration 判斷 ReplicaFailure 屬於新意圖。[目前 ReplicaSet 的匹配](https://github.com/kubernetes/kubernetes/blob/v1.37.0/pkg/controller/deployment/util/deployment_util.go) 以 Pod template 語意相等為準，排除 pod-template-hash。
 
@@ -16,14 +16,14 @@ Operator 遇到 Deployment ReplicaFailure 時，只讀同 namespace、Applicatio
 
 為取得這項證據，Operator 的 namespaced Role 增加 replicasets get/list/watch，供受限 controller cache 使用；不增加任何 ReplicaSet 寫入、Pod exec、Secret、跨 namespace 或 cluster-wide 權限。M1 生成 Role、M4 bootstrap 與 M5 Helm 同步；真實 SubjectAccessReview 增加允許讀取及拒絕寫入／跨租戶的 assertions。
 
-後續真實驗收又發現 Progressing=False／ProgressDeadlineExceeded 也會殘留到新回滾。Kubernetes 的 SetDeploymentCondition 在 status／reason 相同時保留舊 condition；Deployment observedGeneration 推進仍不足以歸屬逾時。目前版本必須有相符且已觀測的 owned ReplicaSet，逾時 condition 的 LastUpdateTime 也必須晚於該 ReplicaSet 建立時間加上設定的 progressDeadlineSeconds，才能判為 Degraded。這是額外的歸屬證據，不自行建立逾時 condition、不解析人類訊息，也不改寫 Deployment status。
+Progressing=False／ProgressDeadlineExceeded 也可能殘留到新回滾。Kubernetes 的 SetDeploymentCondition 在 status／reason 相同時保留舊 condition；Deployment observedGeneration 推進仍不足以歸屬逾時。目前版本必須有相符且已觀測的 owned ReplicaSet，逾時 condition 的 LastUpdateTime 也必須晚於該 ReplicaSet 建立時間加上設定的 progressDeadlineSeconds，才能判為 Degraded。這是額外的歸屬證據，不自行建立逾時 condition、不解析人類訊息，也不改寫 Deployment status。
 
 只有舊／缺少／未觀測／無法歸屬的逾時證據時，Operator 繼續 Progressing；Hub 仍依原 operation deadline 終結為 TIMED_OUT，不延長期限或改寫既有 FAILED 履歷。若 Kubernetes 一直不更新舊 condition，不能把它當作目前版本的進度逾時證據。真正目前版本的 ProgressDeadlineExceeded 與 ReplicaFailure 仍保留。
 
 ## 驗證與限制
 
-先以 Unit fixture 重現舊錯誤、新錯誤、foreign owner、未觀測 ReplicaSet 與 revision marker 缺失，修正前全部 FAIL；這些 fixture 不替代 kind。保留真實 quota 解除後新 revision 必須 SUCCEEDED 的原 assertion，重新執行 Unit／race／envtest、正式 M5 與受影響的 M1～M4。結果見 [M5 紀錄](../m5-validation.md)。新增 revision 會發生 rolling update，需要原本 maxSurge=1 的暫時配額空間。
+Unit 涵蓋舊／目前 ReplicaFailure、foreign owner、未觀測 ReplicaSet 與 revision marker 缺失。kind 驗證 quota 解除後新 revision 必須 SUCCEEDED，並覆蓋真正壞版與回滾；Unit fixture 不取代實際叢集。新 revision 會 rolling update，需要 maxSurge=1 的暫時配額空間。
 
-第二組六項 Unit 涵蓋舊逾時、僅一秒的過早逾時、真實目前逾時、缺少／foreign／未觀測 ReplicaSet；修正前五項 FAIL，真正目前逾時的正向案例 PASS。修正後全部 PASS，既有壞版必須回報 ProgressDeadlineExceeded 的 assertion 保留，補齊實際 API 會提供的 UID／ReplicaSet／時間 fixture。真實回滾必須 SUCCEEDED 的原 assertion 也保留，待全新正式重驗。
+逾時 Unit 涵蓋舊逾時、過早逾時、真正目前逾時及缺少／foreign／未觀測 ReplicaSet。真實壞版必須回報 ProgressDeadlineExceeded，回滾必須 SUCCEEDED；兩者與 Unit／envtest／race 均有對應驗收證據。
 
-M1 kind 測試依新契約核對相同配置與純縮放的新 revision：新的 ReplicaSet UID、Deployment owner UID、template revision、observedGeneration 與完整 Ready／Available 副本都須成立。原 ReplicaSet 不變檢查保留於同 revision 重送，另確認 Deployment generation 不變。M2 配額恢復與 FAILED 履歷保留的 assertions 不變；更新原先「新 revision 重用 ReplicaSet」的舊註解。
+M1 kind 測試核對相同配置與純縮放的新 revision：新的 ReplicaSet UID、Deployment owner UID、template revision、observedGeneration 與完整 Ready／Available 副本都須成立。同 revision 重送須保持 ReplicaSet 與 Deployment generation 不變。M2 則驗證配額恢復及 FAILED 履歷保留。

@@ -90,4 +90,4 @@ Application 現況與 Operation 終態分開。過期操作之後 CR 變 Ready�
 
 M4 的公開請求必須使用 [OIDC HTTP API](../../m4/httpapi/README.md) 的 scoped 入口；Runner 的內部 App／Operation 讀取不作公開授權 API。修改安全模式時另跑 security tests 與 [M4 真實 E2E](../../m4/README.md#測試與證據)，不能以舊本地管理者模式的 PASS 代替角色／租戶驗收。
 
-同目錄 *_test.go 用來理解 key／revision／回滾／錯誤／權限契約；真實 HTTP、SQLite 恢復、rollout／GC 的證據在 [M2 驗收](../../../docs/m2-validation.md) 與 [M3 驗收](../../../docs/m3-validation.md)。測試完整度與當次環境結果分開，本輪實測結果另見 [搬移後重新驗證](../../../docs/revalidation-20261011.md)。
+同目錄 *_test.go 用來理解 key／revision／回滾／錯誤／權限契約；真實 HTTP、SQLite 恢復、rollout／GC 的證據在 [M2 驗收](../../../docs/m2-validation.md) 與 [M3 驗收](../../../docs/m3-validation.md)。跨階段驗證方式與 CI 證據見 [驗證總覽](../../../docs/validation.md)。

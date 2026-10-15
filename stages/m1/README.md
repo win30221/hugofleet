@@ -8,7 +8,7 @@ M1 在 M0 的真實工作負載上加入 Go Operator：以 Application CR 作為
 
 CRD 定義 Kubernetes 可以接受的 Application 型別；CR 是你建立的一個 Application 實例。spec 表達期望配置，status 記錄觀測結果。Operator 的 Reconcile 會反覆比對兩者並修復底層資源；修改 CR 與修改 Deployment 會造成不同結果。
 
-2026-10-11 已恢復實測，結果見 [搬移後重新驗證](../../docs/revalidation-20261011.md)；以下預期供操作時核對。閱讀路線：[檔案地圖](#檔案地圖) → [首次啟動](#1-準備環境與避免衝突) → [呼叫](#3-呼叫價格服務) → [更新](#4-更新為健康新版與兩個副本) → [漂移](#5-漂移修復示範) → [故障／恢復](#6-壞版與用新-revision-恢復) → [結束](#7-刪除結束與再使用) → [診斷](#操作遇到問題時)。
+閱讀路線：[檔案地圖](#檔案地圖) → [首次啟動](#1-準備環境與避免衝突) → [呼叫](#3-呼叫價格服務) → [更新](#4-更新為健康新版與兩個副本) → [漂移](#5-漂移修復示範) → [故障／恢復](#6-壞版與用新-revision-恢復) → [結束](#7-刪除結束與再使用) → [診斷](#操作遇到問題時)。
 
 ## 本階段能做什麼
 
@@ -55,7 +55,7 @@ flowchart TD
 | [config/operator/install.yaml](config/operator/install.yaml) | Namespace、SA／Binding、Operator Deployment | 手寫安裝模板；不是被管理的 pricing-api |
 | [build/operator.Dockerfile](build/operator.Dockerfile) | Operator 映像 | 修改 Go 後重建，再載入／重啟 Operator |
 | [scripts/tools.sh](scripts/tools.sh) | controller-gen、setup-envtest 等工具 | 開發 CRD／integration 時使用 |
-| [scripts/e2e.sh](scripts/e2e.sh)／[test/e2e](test/e2e/) | 真實 rollout、漂移、GC、權限驗收 | 使用獨立測試環境；實測結果見本輪紀錄 |
+| [scripts/e2e.sh](scripts/e2e.sh)／[test/e2e](test/e2e/) | 真實 rollout、漂移、GC、權限驗收 | 使用獨立測試環境；測試範圍見階段驗收文件 |
 
 M1 新增的是 CRD 與 Operator；實際業務服務仍是 [M0 pricing-api](../m0/pricing-api/README.md)。共用 kind／工具從 scripts 與 deploy 取得；執行產物在 `.local/tutorials/m1/`。
 
@@ -305,7 +305,7 @@ make m1-down
 
 ## 8. 測試與診斷
 
-以下是開發驗證選項，不是第一次學習的前置；是否已執行與結果見本輪紀錄。只測 M1 可用 make m1-test，下方全專案命令範圍較大。
+以下是開發驗證選項，不是第一次學習的前置；驗收範圍見階段驗收文件。只測 M1 可用 make m1-test，下方全專案命令範圍較大。
 
 進入 M2 前，先完成理解檢查：
 
@@ -344,7 +344,7 @@ kubectl --context kind-hugofleet-m1-demo -n hf-demo get events --sort-by=.lastTi
 kubectl --context kind-hugofleet-m1-demo -n hf-demo logs deployment/hugofleet-operator --tail=100
 ```
 
-不要刪除其他專案資源來消除 ownership 衝突。既有本機驗收見 [M1 紀錄](../../docs/m1-validation.md) 與 [M2 紀錄的三階段回歸](../../docs/m2-validation.md)；本輪 E2E 結果另見重新驗證紀錄。
+不要刪除其他專案資源來消除 ownership 衝突。驗收範圍見 [M1 驗收](../../docs/m1-validation.md)。
 
 ## 本階段的程式導讀
 
@@ -362,7 +362,7 @@ M1 新增 Application API 與 Go Operator，沿用 [M0 pricing-api](../m0/README
 
 [config/crd](config/crd/bases) 與 [config/rbac](config/rbac) 由 controller-gen 產生；[config/operator/install.yaml](config/operator/install.yaml) 是安裝設定；[build/operator.Dockerfile](build/operator.Dockerfile) 是映像。教學及驗收的範例 CR 使用本資料夾的 [application.yaml](application.yaml)。
 
-單階段開發可用 make m1-build／m1-test，integration 與完整驗收見第 8 節。這些與首次 up 是不同用途，本輪結果另存於重新驗證紀錄。
+單階段開發可用 make m1-build／m1-test，integration 與完整驗收見第 8 節。這些與首次 up 是不同用途，驗收範圍見 [驗證總覽](../../docs/validation.md)。
 
 M2／M3 直接沿用這個 Operator 與 CRD，沒有另一套 Reconcile。API／controller 不放在 Go 的 internal 目錄，讓跨階段套件能合法共用。讀完後應能追出「改 Application → Reconcile → 工作負載 → status」，並理解為何手動改 Deployment 會被修復，再往 [M2](../m2/README.md) 走。逐函式說明、ownership 與測試邊界見 [Controller 深入導讀](controller/README.md)。
 
@@ -394,4 +394,4 @@ kubectl --context kind-hugofleet-m1-demo -n hf-demo logs deployment/hugofleet-op
 
 反覆閱讀／呼叫不用重跑 up。`make m1-up` 會重新 apply application.yaml，預設把配置帶回 rev 1／v1／1 副本；保留練習進度時只查狀態、重新 forward。M1 本身沒有 Hub／Agent 的 revision 持久去重防護，本課每次更新採用新 revision 是操作慣例，不把它說成 M3 ledger 的舊命令拒絕。
 
-修改 CR 型別時，先改 api/v1alpha1 中的 Go／markers，再於專案根目錄用 `make generate manifests` 更新生成檔。修改 controller Go 後須重建 Operator 映像、重新安裝／重啟才會作用於 Pod；`make m1-build` 單獨產生的 bin/operator 不會自動替換叢集中的映像。相關驗證命令及本輪結果見重新驗證紀錄。
+修改 CR 型別時，先改 api/v1alpha1 中的 Go／markers，再於專案根目錄用 `make generate manifests` 更新生成檔。修改 controller Go 後須重建 Operator 映像、重新安裝／重啟才會作用於 Pod；`make m1-build` 單獨產生的 bin/operator 不會自動替換叢集中的映像。驗證命令與測試範圍見 [驗證總覽](../../docs/validation.md)。

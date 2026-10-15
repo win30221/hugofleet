@@ -8,7 +8,7 @@
 
 第一次接觸專案，先從 M0 開始；學到 Hub 時，啟動、操作、設定與診斷都以本教學為入口。想分開練習基礎工作負載與 Operator，分別看 [M0 使用指南](../m0/README.md)、[M1 使用指南](../m1/README.md)。
 
-2026-10-11 已恢復實測，結果見 [搬移後重新驗證](../../docs/revalidation-20261011.md)。閱讀路線：[檔案地圖](#檔案地圖) → 第 1～3 節先理解元件與名詞 → [首次操作](#4-第一課建立應用與使用真實業務-api) → 第 5～9 節發版、故障、回滾、衝突 → [停止與再使用](#10-第七課hub-重啟sqlite-履歷與結束方式) → [程式導讀](#本階段的程式導讀)。
+閱讀路線：[檔案地圖](#檔案地圖) → 第 1～3 節先理解元件與名詞 → [首次操作](#4-第一課建立應用與使用真實業務-api) → 第 5～9 節發版、故障、回滾、衝突 → [停止與再使用](#10-第七課hub-重啟sqlite-履歷與結束方式) → [程式導讀](#本階段的程式導讀)。
 
 ## 檔案地圖
 
@@ -27,7 +27,7 @@
 | [web](web/) | embed、HTML template、CSS | 改頁面在此；資源被編進 Hub，需重建／重啟 |
 | [config/hub/rbac.yaml](config/hub/rbac.yaml) | Hub 的 hf-demo 權限 | 手寫固定安裝配置，不供任意擴權 |
 | [build/hub.Dockerfile](build/hub.Dockerfile) | Hub 容器 | M2 教學跑主機程序；M3 沿用此檔建映像 |
-| [scripts/e2e.sh](scripts/e2e.sh)／[test/e2e](test/e2e/) | 真實 UI／REST／DB／Operator E2E | 另外的測試叢集，結果另見本輪紀錄 |
+| [scripts/e2e.sh](scripts/e2e.sh)／[test/e2e](test/e2e/) | 真實 UI／REST／DB／Operator E2E | 另外的測試叢集，測試範圍見階段驗收文件 |
 
 本階段新增 Hub／SQLite／管理頁面；工作負載是 M0，Operator 是 M1。不要再找另一份 M2 pricing-api 或 controller。下方是操作教學，內部交易與程式流程見 [hub/README.md](hub/README.md)。
 
@@ -108,7 +108,7 @@ make m2-up
 
 保留此終端 A。開啟 [Hub UI](http://127.0.0.1:18090)，以名稱 pricing-api、image pricing-api:v1、replicas=1、port=8080 建立應用；其餘使用預設。
 
-上方 unset 是**首次使用預設環境**的做法；若先前已指定本輪自訂 DB，沿用其 HF_HUB_DATABASE，不要 unset。首次工具安裝後，不用每個新終端都 make tools。make m2-up 最後執行前景 Hub，停在日誌持續輸出是正常行為；Ctrl+C 才會停止管理程序。
+上方 unset 是**首次使用預設環境**的做法；若先前已指定目前使用的自訂 DB，沿用其 HF_HUB_DATABASE，不要 unset。首次工具安裝後，不用每個新終端都 make tools。make m2-up 最後執行前景 Hub，停在日誌持續輸出是正常行為；Ctrl+C 才會停止管理程序。
 
 | 終端 | 用途 | 環境 |
 |---|---|---|
@@ -403,7 +403,7 @@ export HF_HUB_POLICY="$PWD/stages/m2/policy.json"
 bash stages/m2/scripts/control.sh hub-up
 ```
 
-若本輪使用自訂 DB，上方 HF_HUB_DATABASE 改成那一份實際路徑。憑證需要重發時，在相同環境先 `bash stages/m2/scripts/control.sh bootstrap`，再 hub-up。不要在新終端直接使用沒有這些變數的 `make hub-up`，否則會落到舊入口的 kubeconfig／DB 路徑。
+若使用自訂 DB，上方 HF_HUB_DATABASE 改成那一份實際路徑。憑證需要重發時，在相同環境先 `bash stages/m2/scripts/control.sh bootstrap`，再 hub-up。不要在新終端直接使用沒有這些變數的 `make hub-up`，否則會落到舊入口的 kubeconfig／DB 路徑。
 
 自訂 DB 時每次沿用相同 HF_HUB_DATABASE。bootstrap 產生短期 namespace 憑證，預期約 8 小時，需重新 bootstrap 並重啟 Hub 才讀取新檔案。
 
@@ -450,7 +450,7 @@ loopback、Host／Origin 檢查與 UI CSRF 是目前本機管理入口的保護�
 | 關閉 Hub 後應用是否還會執行？ | 控制面與工作負載生命週期 |
 | 後面階段增加哪些能力？ | M3 多叢集、M4 登入／租戶隔離、M5 Dashboard／可觀測性與 Helm；依各階段指南操作 |
 
-本教學的操作結果供實作時核對，搬移後的實測範圍與未完成項目見 [本輪紀錄](../../docs/revalidation-20261011.md)。啟動與診斷以本教學為入口；[M0](../../docs/m0-validation.md)、[M1](../../docs/m1-validation.md)、[M2](../../docs/m2-validation.md) 驗收紀錄保留歷史結果。
+本教學的預期結果供操作時核對。測試範圍與證據見 [M2 驗收](../../docs/m2-validation.md) 與 [驗證總覽](../../docs/validation.md)。
 
 ## 本階段的程式導讀
 
@@ -473,7 +473,7 @@ M2 也將 M1 的 [workload.go](../m1/controller/workload.go) 工作負載投影�
 
 [policy.json](policy.json) 放資源政策，[config/hub](config/hub) 放 RBAC；[build/hub.Dockerfile](build/hub.Dockerfile) 打包 Hub。SQLite migration [001](hub/repository/001_initial.sql)／[002](hub/repository/002_observations.sql) 是 M2 引入；[003_agent.sql](hub/repository/003_agent.sql) 是 **M3 新增**，留在同一 repository 套件供 go:embed 使用。
 
-單階段開發可用 make m2-build／m2-test。完整 M2 驗收在專案根目錄以 `make demo-image-build operator-image-build` 準備映像，再 `make test-e2e`；它使用另外的測試叢集與 DB，不取代上方手動理解課程。這些命令的本輪結果另存於重新驗證紀錄。
+單階段開發可用 make m2-build／m2-test。完整 M2 驗收在專案根目錄以 `make demo-image-build operator-image-build` 準備映像，再 `make test-e2e`；它使用另外的測試叢集與 DB，不取代上方手動理解課程。這些命令的驗收範圍見 [驗證總覽](../../docs/validation.md)。
 
 M3 擴充這份 Hub，沒有複製另一套資料庫或服務。M3 修改的共用檔案為 main.go／domain／service／repository／HTTP auth／UI，詳見 [M3 修改清單](../m3/README.md)。M2 入口仍預設 `--mode=m2`，使用獨立學習叢集與 DB。讀完後應能追出「請求 → SQLite Operation → Runner → CR → Ready」，並區分期望版本、已提交版本與最後成功版本。
 

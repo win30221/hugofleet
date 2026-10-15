@@ -1,6 +1,6 @@
 # ADR 0010：OIDC、租戶授權與 Worker bootstrap
 
-日期：2026-10-12。狀態：採用；實測結果另記錄於 M4 validation。
+狀態：已採納。驗收範圍見 [M4 驗收](../m4-validation.md)。
 
 ## 問題
 

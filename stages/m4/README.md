@@ -1,6 +1,6 @@
 # M4：OIDC、租戶權限與真實隔離
 
-本階段延用 M2 的 SQLite／Release／Operation runner、M3 的 Worker 主動 mTLS 通道，增加真實 Dex 登入、server-side session、DB membership、租戶 namespaces、RBAC、Quota、LimitRange、NetworkPolicy 與稽核。**2026-10-13 已完成本機驗收**，包含全新正式入口與 owned cleanup；逐項實測見 [M4 驗收紀錄](../../docs/m4-validation.md)，設計與固定版本見 [ADR 0010](../../docs/adr/0010-oidc-tenants-and-worker-bootstrap.md)。
+本階段延用 M2 的 SQLite／Release／Operation runner、M3 的 Worker 主動 mTLS 通道，增加真實 Dex 登入、server-side session、DB membership、租戶 namespaces、RBAC、Quota、LimitRange、NetworkPolicy 與稽核。驗收涵蓋正式入口與 owned cleanup；測試範圍見 [M4 驗收紀錄](../../docs/m4-validation.md)，設計與固定版本見 [ADR 0010](../../docs/adr/0010-oidc-tenants-and-worker-bootstrap.md)。
 
 撰寫 client 請使用 [M4 OpenAPI](../../docs/openapi-m4.yaml)：session、CSRF、角色與租戶 profile 的契約和 M2／M3 開發模式不同。
 
@@ -132,7 +132,7 @@ make test-e2e-m4
 
 `test-e2e-m4` 使用獨立 m4-e2e A／B、私有新 state、真實 Dex／mTLS Pod／SQLite，測試 T14 跨租戶權限、T15 CPU／memory Pod Admission 及 T16 enforcing Calico。它以真正 Go probe Pod 比較 Policy 前後與同租戶正向控制，不使用 shell／exec；測試結束只清除精確 owned resources，保留私有資料與日誌。此命令需先清掉佔用 18094／5556 的 M4 教學實例；有殘留 E2E 名稱會拒絕啟動。
 
-同一真實驗收也提交伺服器實際渲染的表單，使用頁面的 CSRF／冪等鍵／期望版本：建立服務、v2-good／replicas 2、手動 Deployment 漂移、v2-broken 的實際 readiness 故障、確認回滾與刪除／GC。再停止 B Agent 驗證斷線與當地服務延續，恢復連線；停止／恢復 owned Hub，驗證 Worker 自主修復、原 DB／session 與重新同步。是否通過仍以本輪驗收紀錄為準。
+同一真實驗收也提交伺服器實際渲染的表單，使用頁面的 CSRF／冪等鍵／期望版本：建立服務、v2-good／replicas 2、手動 Deployment 漂移、v2-broken 的實際 readiness 故障、確認回滾與刪除／GC。再停止 B Agent 驗證斷線與當地服務延續，恢復連線；停止／恢復 owned Hub，驗證 Worker 自主修復、原 DB／session 與重新同步。測試證據見 [M4 驗收](../../docs/m4-validation.md)。
 
 `make test-oidc` 是獨立的真實 Dex 負向驗證入口，建立新的私有 state、Dex 與 session TTL=5s 的本機 Hub，執行 state／nonce／binding／PKCE、JWT 簽章／issuer／audience、約 15 分鐘自然到期及 canonical backchannel 測試，再清理本次程序與容器。需先釋放 5556／18094／18444，不需 Worker；日誌在 artifacts/m4-oidc，帳號／DB 保留於 .local/m4-oidc-*。CI 另有 oidc job；Unit 並不涵蓋這些真實 Provider 測項。
 

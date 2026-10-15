@@ -1,47 +1,39 @@
-# 技術文件與驗收證據
+# 技術文件與驗證
 
-逐階段教學、程式、YAML／JSON 與 Bash 集中在 [stages](../stages/README.md)。本資料夾保留跨階段的技術依據與測試證據：
+完整操作教學與程式導讀位於 [stages](../stages/README.md)。本目錄提供 API 契約、架構決策、驗證方式與驗收證據。
 
 | 文件 | 用途 |
 |---|---|
-| [stages 索引](../stages/README.md) | 教學與階段選擇、獨立啟動、切換／重建統一在此 |
-| [m0-validation.md](m0-validation.md)～[m3-validation.md](m3-validation.md) | 實測命令、結果、失敗修正與限制；保留各次驗收當時的狀態 |
-| [revalidation-20261011.md](revalidation-20261011.md) | 新 GitHub 目錄下的 M0～M3 重新驗證，以及全部正式 README 核對結果 |
-| [audit-m0-m5-20261014.md](audit-m0-m5-20261014.md) | M0～M5 稽核發現、原檢查結果與後續修正追蹤；修正不等於已重驗通過 |
-| [release-validation-20261014.md](release-validation-20261014.md) | 本次稽核修正後的 M0～M5 完整重驗與 Hosted CI 進度；只記本輪新執行結果 |
-| [m4-validation.md](m4-validation.md)／[M4 教學](../stages/m4/README.md) | OIDC、租戶／Quota／Security Profile 的分項實測與操作；全新正式入口與 owned cleanup 已通過 |
-| [m5-validation.md](m5-validation.md)／[M5 教學](../stages/m5/README.md)／[M5 OpenAPI](openapi-m5.yaml) | Dashboard／telemetry／Helm 的全新正式本機驗收與最新 M1～M4 回歸已通過；當時尚未執行 Hosted CI，後續結果見本次完整重驗紀錄 |
-| [Demo 播放頁](media/m5-demo.html)／[MP4](media/m5-demo.mp4)／[回滾 trace](media/m5-rollback-trace.html) | 真實操作截圖的時間順序剪輯（非連續錄影）與實際三元件 spans；擷取時間及雜湊另附於播放頁 |
-| [m2-api.md](m2-api.md) | 單叢集模式的 API 範例與部署履歷規則 |
-| [openapi.yaml](openapi.yaml)／[openapi-m4.yaml](openapi-m4.yaml) | M2／M3 開發模式與 M4 OIDC REST 契約；M4 必須使用 session／Origin／CSRF，不能沿用舊模式的認證例外 |
-| [adr](adr/) | 版本、權限、通訊與儲存選型的架構決策 |
+| [驗證總覽](validation.md) | 工具前置、正式驗證命令、各階段結果、對應程式提交的 Hosted CI 與限制 |
+| [M0 驗收](m0-validation.md) | 價格 API、三版映像、HTTP 與原生 rollout |
+| [M1 驗收](m1-validation.md) | CRD、Operator、狀態、更新、漂移修復與 GC |
+| [M2 驗收](m2-validation.md) | UI／REST、SQLite、部署履歷、回滾與程序恢復 |
+| [M3 驗收](m3-validation.md) | 雙 Worker、mTLS、斷線修復、ledger 與重連 |
+| [M4 驗收](m4-validation.md) | OIDC、租戶角色、Quota、Security Profile 與稽核 |
+| [M5 驗收](m5-validation.md) | Dashboard、trace／metrics、Helm lifecycle 與瀏覽器示範 |
+| [Demo 播放頁](media/m5-demo.html)／[MP4](media/m5-demo.mp4)／[回滾 trace](media/m5-rollback-trace.html) | 真實操作截圖剪輯與跨 Hub／Agent／Operator 的實際追蹤 |
+| [M2 API](m2-api.md)／[OpenAPI](openapi.yaml) | M2／M3 開發模式 API 與部署履歷規則 |
+| [M4 OpenAPI](openapi-m4.yaml)／[M5 OpenAPI](openapi-m5.yaml) | OIDC session、Origin／CSRF、租戶授權、Dashboard 與 telemetry 契約 |
+| [ADR](adr/) | 版本、權限、通訊、儲存與交付的設計決策 |
 
-產品與里程碑規格以根目錄 [HUGOFLEET_SPEC.md](../HUGOFLEET_SPEC.md) 為準。歷史驗收中的「當時尚未開始」描述保留原意，最新完成程度看 [README](../README.md) 與對應階段驗收紀錄。
+產品與里程碑規格以 [HUGOFLEET_SPEC.md](../HUGOFLEET_SPEC.md) 為準。測試結果須對應明確的命令與程式版本；操作教學中的預期結果供讀者核對，不能單憑文件描述宣稱驗收通過。
 
-找程式請看 [stages 索引](../stages/README.md)，來源分類決策見 [ADR 0009](adr/0009-stage-source-layout.md)。
+## 文件分工
 
-## 哪一層寫哪種文件
-
-| 位置 | 誰會讀／寫什麼 |
+| 位置 | 內容 |
 |---|---|
-| 根 README | 第一次打開專案的人；定位、環境、主要資料夾與學習入口 |
-| stages/README | 想選課、找新增元件、切換／重建的人 |
-| stages/mN/README | 真的跟著操作的人；首次啟動、理解練習、診斷與結束 |
-| 重要元件的 README | 想追程式或修改的人；函式流程、介面、資料、錯誤與測試邊界 |
-| docs API／OpenAPI | 寫 client 的人；精確請求、回應、狀態與錯誤契約 |
-| docs ADR | 想知道設計原因的人；需求、決策、替代方案與限制 |
-| docs validation | 想知道實際結果的人；環境、命令、失敗／取消、原始證據 |
+| 根 README | 專案定位、環境、主要資料夾與學習入口 |
+| stages/README | 階段選擇、元件位置、切換與重建 |
+| stages/mN/README | 完整操作、預期結果、排查與結束方式 |
+| 元件 README | 函式流程、介面、資料、錯誤與測試邊界 |
+| docs API／OpenAPI | 精確請求、回應、狀態與錯誤契約 |
+| docs ADR | 需求、設計、替代方案與限制 |
+| docs validation | 驗證命令、測試範圍、證據索引與未驗收項目 |
 
-元件導讀：[M0 價格 API](../stages/m0/pricing-api/README.md)、[M1 Controller](../stages/m1/controller/README.md)、[M2 Hub](../stages/m2/hub/README.md)、[M3 Agent](../stages/m3/agent/README.md)、[M3 Hub Transport](../stages/m3/agenttransport/README.md)。小資料夾由階段檔案地圖說明即可。
+元件導讀：[價格 API](../stages/m0/pricing-api/README.md)、[Controller](../stages/m1/controller/README.md)、[Hub](../stages/m2/hub/README.md)、[Agent](../stages/m3/agent/README.md)、[Hub Transport](../stages/m3/agenttransport/README.md)。目錄設計見 [ADR 0009](adr/0009-stage-source-layout.md)。
 
-## 教學維護方式
+## 維護方式
 
-階段教學先寫「學什麼、增加什麼」，列出檔案用途與共用依賴，明確給執行目錄、Shell、環境與終端分工。第一次操作保留一條主線；展開腳本標成替代路徑，避免快捷啟動與手動建立又各跑一遍。
+教學列明執行目錄、Shell、環境與終端分工，保留一條首次操作主線；展開腳本作為替代路徑。每個練習說明目的、命令、預期結果、失敗排查與資料保留。版本、UID、status 對照實際欄位，不混用 202、ACK、Ready 與 Release 成功。
 
-每個練習說明目的、命令、預期結果、結果含義、失敗從哪查。版本／UID／status 對照真實欄位，不能把 202、ACK、Ready 或歷史成功混用。最後寫停止、保留資料、重建、反覆練習及理解檢查。
-
-共用元件的深入說明只維護一份，後面階段連回原文件，另列新增或修改位置。生成檔標明來源與生成入口；執行資料標明 DB／憑證／ownership，不當作原始碼或隨手清理的快取。
-
-使用文件描述「目前應怎麼操作」；validation 保存「那一次真的做了什麼」。舊紀錄不因新文件或路徑整理更新為 PASS。先前整理沒有執行編譯、文件工具、測試或 Demo；2026-10-11 已依新授權恢復，結果另存 [本輪紀錄](revalidation-20261011.md)。
-
-2026-10-11 專案搬至 `C:\Users\H\Documents\GitHub\win30221\hugofleet`，目前 WSL 操作路徑為 `/mnt/c/Users/H/Documents/GitHub/win30221/hugofleet`。validation、artifacts 日誌與 `.local/archive` 快照中的舊絕對路徑保留作為當次證據；要跟著操作，請使用 stages 的現行教學。
+共用元件的深入說明只維護一份，後續階段連回原文件並列出使用位置。生成檔標明來源與生成入口，DB／憑證／ownership 標明保存方式。公開文件直接描述功能、設計與操作，不加入開發日期、對話授權或整理歷程；測試證據使用程式提交、CI run 與日誌索引。
