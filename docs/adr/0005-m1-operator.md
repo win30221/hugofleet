@@ -22,3 +22,7 @@ WSL 缺 C compiler 時，Race 在固定 Go container 執行 Unit 與真實 envte
 - [controller-runtime 0.25.1 go.mod](https://github.com/kubernetes-sigs/controller-runtime/blob/v0.25.1/go.mod)、[相容性表](https://github.com/kubernetes-sigs/controller-runtime#compatibility)。
 - [envtest 官方說明](https://book.kubebuilder.io/reference/envtest)、[Kubernetes CEL quantity library](https://kubernetes.io/docs/reference/using-api/cel/#kubernetes-resource-quantity-library)。
 - [kube-apiserver endpoint-reconciler-type 參數](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/)、[Kubernetes 1.37 endpoint IP 驗證原始碼](https://github.com/kubernetes/kubernetes/blob/v1.37.0/pkg/controlplane/instance.go)。
+
+## 閱讀後返回
+
+本頁用來查設計原因，不是安裝步驟。返回 [M1 原理與進階閱讀](../../stages/m1/README.md#原理與進階閱讀)，或從[選課與回訪](../../stages/README.md#回來繼續哪一課)接續使用此共用設計的其他階段。其他設計問題見 [ADR 導覽](../README.md#設計問題與-adr-對照)。

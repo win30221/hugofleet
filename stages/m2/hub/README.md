@@ -1,5 +1,21 @@
 # Hub：從管理請求到部署履歷
 
+本頁是元件導讀。實際練習見 [M2 逐步操作](../README.md#逐步操作)；遇到執行問題先查[排查方式](../README.md#操作遇到問題時)，結束或重開環境依[停止與下次繼續](../README.md#停止與下次繼續)。修改後的驗證範圍見 [M2 驗收](../../../docs/m2-validation.md)。
+
+## 帶著一次部署讀程式
+
+先在 [M2 教學](../README.md) 成功建立一個應用，再從該操作的 application_id／operation_id 對照下面流程。讀到最後應能區分「請求接受」「CR 寫入」「完整部署成功」。
+
+| 你遇到的問題 | 先看哪裡 |
+|---|---|
+| UI／REST 輸入或錯誤回應 | httpapi／web |
+| 新版本、回滾與去重規則 | service／domain |
+| SQLite 交易、歷史或程序恢復 | repository |
+| CR 已存在但服務未就緒 | kube transport，再看 M1 Controller |
+| M3 連線與派送 | M3 agenttransport，而非增加 Hub kubeconfig |
+
+修改後從專案根目錄執行 `make m2-test`；影響共用 Store 或業務規則時，也執行使用它的 M3～M5 受影響測試，驗證選擇見[驗證總覽](../../../docs/validation.md)。
+
 完整操作看 [M2 教學](../README.md)，雙叢集操作看 [M3 教學](../../m3/README.md)，安全租戶操作看 [M4 教學](../../m4/README.md)。本資料夾保存共用業務／SQLite 邏輯。M2 使用受限 kubeconfig transport；M3 透過 Agent transport；M4 使用同一遠端通道並另有 OIDC HTTP／UI，Store 在交易內核對資料庫角色。
 
 ## 套件分工與閱讀順序
@@ -91,3 +107,9 @@ Application 現況與 Operation 終態分開。過期操作之後 CR 變 Ready�
 M4 的公開請求必須使用 [OIDC HTTP API](../../m4/httpapi/README.md) 的 scoped 入口；Runner 的內部 App／Operation 讀取不作公開授權 API。修改安全模式時另跑 security tests 與 [M4 真實 E2E](../../m4/README.md#測試與證據)，不能以舊本地管理者模式的 PASS 代替角色／租戶驗收。
 
 同目錄 *_test.go 用來理解 key／revision／回滾／錯誤／權限契約；真實 HTTP、SQLite 恢復、rollout／GC 的證據在 [M2 驗收](../../../docs/m2-validation.md) 與 [M3 驗收](../../../docs/m3-validation.md)。跨階段驗證方式與 CI 證據見 [驗證總覽](../../../docs/validation.md)。
+
+## 讀完後去哪裡
+
+- 返回 [M2 逐步操作](../README.md#逐步操作)，對照本輪結果。
+- 需要停止、換課或再次練習，前往 [M2 完成後的選擇](../README.md#完成這一課後去哪裡)。
+- 想繼續理解其他元件，回到 [M2 原理與進階閱讀](../README.md#原理與進階閱讀)。

@@ -19,3 +19,7 @@ Helm 固定 4.3.0，官方相容範圍含 Kubernetes 1.37。固定 release 為 h
 ## 限制
 
 單 Hub／SQLite、開發 CA／loopback Dex、拋棄式 kind etcd 仍不是生產 HA。只有 enforcing CNI 的 Worker 能宣稱封包隔離。Prometheus 指標為程序生命期累積值，重啟會重設，持久履歷以 SQLite 為準。Hosted CI 成功須另有實際執行證據。
+
+## 閱讀後返回
+
+本頁用來查設計原因，不是安裝步驟。返回 [M5 原理與進階閱讀](../../stages/m5/README.md#原理與進階閱讀)，或從[選課與回訪](../../stages/README.md#回來繼續哪一課)接續使用此共用設計的其他階段。其他設計問題見 [ADR 導覽](../README.md#設計問題與-adr-對照)。

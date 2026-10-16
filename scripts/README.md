@@ -1,12 +1,28 @@
 # 跨階段共用腳本
 
+第一次使用先依[根 README](../README.md#首次準備環境)準備 WSL，再照[階段教學](../stages/README.md)操作。這份文件供你查共用命令，不需要先逐一執行腳本。
+
+## 先選你要做的事
+
+| 目的 | 操作 | 完成判斷 |
+|---|---|---|
+| 第一次準備 Linux 工具 | `make tools` | 安裝成功，工具位於專案內 |
+| 確認可開始練習 | `make doctor` | 固定版本與 Docker Linux engine 檢查通過 |
+| 啟動或結束一課 | 該課的 `make mN-up`／`make mN-down` | 依階段 README 核對 |
+| 查詢某課 Kubernetes | 依該課設定環境；M3～M5 先 source 該課 env.sh，再 kubectl | context 與 kubeconfig 指向該課 |
+| 只修改文件 | `make docs-check` | 檢查通過，不啟動叢集 |
+
+Windows 從專案資料夾開 PowerShell，再執行 `wsl -d Ubuntu`；以下 Bash 命令都在專案根目錄執行。N 是階段數字，例如 `make m1-up`。
+
+## 腳本分工
+
 各階段的實際操作流程在 [stages](../stages/README.md) 的 scripts/control.sh。這裡保留共同環境與命令入口：
 
 | 檔案 | 用途 |
 |---|---|
 | [common.sh](common.sh) | 專案路徑、工具／快取環境、隔離 kubeconfig、固定叢集名稱、ownership 核對與共用函式 |
 | [kind.sh](kind.sh) | 共用 kind 建立／就緒與限定 ownership 的清理；依 HF_CLUSTER 選擇叢集與 API port |
-| [hf.sh](hf.sh) | Make 命令分派、舊命令相容入口，以及跨階段 format／lint／build／驗證命令 |
+| [hf.sh](hf.sh) | Make 命令分派，以及跨階段 format／lint／build／驗證命令 |
 | [bootstrap-tools.sh](bootstrap-tools.sh) | 安裝固定版本的 Go／kind／kubectl 至專案 .tools |
 | [cache-native.sh](cache-native.sh) | 在 WSL 原生 Linux filesystem 建立專案 Go 快取，保留來源檔案位置 |
 | [versions.env](versions.env) | 工具版本、SHA-256、Docker image digest 的唯一設定來源 |
@@ -32,7 +48,7 @@
 | make test-oidc | 獨立準備真實 Dex／短 session 本機 Hub，執行 OIDC 負向及約 15 分鐘 JWT 自然到期測試；不建立 Worker |
 | make docs-check | 執行 [Go 文件工具](../tools/README.md)；不是完整 Demo 驗證 |
 
-Makefile 保留的舊相容入口：demo-image-* 屬 M0、operator-*／demo-deploy 屬 M1、demo／hub-* 屬 M2。`make demo` 不是全部里程碑共用的啟動；學習請明確使用 m0-up～m5-up。
+Makefile 的 demo-image-* 用於價格 API 映像，operator-* 用於 Operator 工具與安裝；啟動整課使用 m0-up～m5-up。
 
 ## common.sh 改哪些環境
 
@@ -41,7 +57,6 @@ source 後會切到專案根目錄，設定固定工具 PATH、GOTOOLCHAIN=local
 例如查看 M1：
 
 ```bash
-cd /mnt/c/Users/H/Documents/GitHub/win30221/hugofleet
 export HF_CLUSTER=hugofleet-m1-demo
 unset HF_LEARNING_ROOT
 source scripts/common.sh
@@ -96,3 +111,8 @@ HF_ETCD_STORAGE=memory／disk 在新建 kind 時選 storage；不會替已存在
 | HF_ETCD_STORAGE | 新 kind 的 memory／disk profile；預設 memory |
 
 其他驗收用旗標留在各 E2E 腳本，不作日常教學前置。跨階段切換用 stages 的停止／再啟動流程，不以手動改 ownership 記錄解決衝突。
+
+
+## 查完後返回
+
+若從環境準備前來，回到[根 README](../README.md#首次準備環境)完成檢查，再[開始 M0](../stages/m0/README.md)。若正在練習某一課，從[選課與回訪](../stages/README.md#回來繼續哪一課)返回原課；沿用原環境與 state，不需因閱讀本頁重新啟動整課。

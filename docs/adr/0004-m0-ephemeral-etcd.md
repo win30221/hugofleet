@@ -26,3 +26,7 @@ M0 的預設單節點設定以 kubeadm `ClusterConfiguration.etcd.local.dataDir`
 - [kubeadm v1beta4 LocalEtcd dataDir](https://kubernetes.io/docs/reference/config-api/kubeadm-config.v1beta4/#LocalEtcd)：支援指定本地 etcd 資料目錄。
 - [kind kubeadm config patches](https://kind.sigs.k8s.io/docs/user/configuration/#kubeadm-config-patches)。
 - [kind 0.33.0 Docker provision source](https://github.com/kubernetes-sigs/kind/blob/v0.33.0/pkg/cluster/internal/providers/docker/provision.go#L231)：`/run` 使用 tmpfs；本機 source checksum 已驗證，node inspect 亦確認此掛載。
+
+## 閱讀後返回
+
+本頁用來查設計原因，不是安裝步驟。返回 [M0 原理與進階閱讀](../../stages/m0/README.md#原理與進階閱讀)，或從[選課與回訪](../../stages/README.md#回來繼續哪一課)接續使用此共用設計的其他階段。其他設計問題見 [ADR 導覽](../README.md#設計問題與-adr-對照)。

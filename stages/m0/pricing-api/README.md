@@ -1,5 +1,19 @@
 # pricing-api 程式與使用導讀
 
+本頁是元件導讀。實際練習見 [M0 逐步操作](../README.md#逐步操作)；遇到執行問題先查[排查方式](../README.md#操作遇到問題時)，結束或重開環境依[停止與下次繼續](../README.md#停止與下次繼續)。修改後的驗證範圍見 [M0 驗收](../../../docs/m0-validation.md)。
+
+## 在這裡先做什麼
+
+想把服務部署到 Kubernetes，先完成 [M0 操作](../README.md)。想只看價格 API 如何運作，直接跳到[本機 Go 練習](#只在本機理解-go-api)，不需啟動叢集。
+
+| 你要改什麼 | 從哪裡看 | 如何核對 |
+|---|---|---|
+| 折扣與價格 | quote.go | 整數分、取整與最低零的測試 |
+| JSON、HTTP 錯誤與端點 | http.go | HTTP 測試與 M0 契約 |
+| 關閉與監聽 | main.go | server 測試，再執行本機練習 |
+
+修改後在專案根目錄執行 `make m0-test`；要驗證容器與 Kubernetes，另依 M0 重建映像並執行 E2E。
+
 本元件是被 HugoFleet 部署的業務服務。完整 kind 啟動、更新、壞版與恢復看 [M0 教學](../README.md)；後面的 M1～M3 使用同一服務。這裡把 HTTP 操作對到程式，方便讀懂與修改。
 
 ## 每個檔案負責什麼
@@ -43,7 +57,6 @@ main 的 version 預設 v1，Dockerfile 用 APP_VERSION 與 Go linker 注入 v1�
 下面是可選的輕量練習，不建立 kind。命令在專案根目錄的 WSL Bash 執行：
 
 ```bash
-cd /mnt/c/Users/H/Documents/GitHub/win30221/hugofleet
 source scripts/common.sh
 go run ./stages/m0/pricing-api --listen=127.0.0.1:18082
 ```
@@ -64,3 +77,9 @@ curl --fail http://127.0.0.1:18082/quote \
 價格規則改 quote.go，HTTP 欄位或錯誤契約改 http.go 與型別；依變更更新對應測試與 [M0 教學](../README.md)。版本行為在 HTTP 層與 Docker build 定義；不新增 runtime 開關假裝換版。
 
 改完 Go 不會改已存在的 Docker 映像。要在 kind 使用新程式，重建、載入映像並讓新 Pod 使用它；同 tag 的現有 Pod 不會因 kind load 自動重啟。教學使用分開的版本 tag，便於觀察。
+
+## 讀完後去哪裡
+
+- 返回 [M0 逐步操作](../README.md#逐步操作)，對照本輪結果。
+- 需要停止、換課或再次練習，前往 [M0 完成後的選擇](../README.md#完成這一課後去哪裡)。
+- 想繼續理解其他元件，回到 [M0 原理與進階閱讀](../README.md#原理與進階閱讀)。

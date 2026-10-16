@@ -21,3 +21,7 @@ Go 程式、API 型別、YAML／JSON、Bash、Dockerfile 與測試集中在 `sta
 套件路徑必須與 import、Proto go_package、controller-gen、Docker COPY／build、Make、E2E、envtest CRD 路徑及文件連結一致。修改路徑時檢查這些入口；有功能變更或具體失敗時，再擴大相關測試。
 
 各階段 build／Unit 命令方便單獨閱讀與開發；真實叢集流程由獨立入口及 kind E2E 驗收。測試方式、證據與限制見 [驗證總覽](../validation.md)。
+
+## 閱讀後返回
+
+本頁用來查設計原因，不是安裝步驟。返回[選課與回訪](../../stages/README.md#回來繼續哪一課)接續原課。其他設計問題見 [ADR 導覽](../README.md#設計問題與-adr-對照)。

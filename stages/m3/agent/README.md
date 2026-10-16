@@ -1,5 +1,20 @@
 # Worker Agent：連線、命令與持久化保護
 
+本頁是元件導讀。實際練習見 [M3 逐步操作](../README.md#逐步操作)；遇到執行問題先查[排查方式](../README.md#操作遇到問題時)，結束或重開環境依[停止與下次繼續](../README.md#停止與下次繼續)。修改後的驗證範圍見 [M3 驗收](../../../docs/m3-validation.md)。
+
+## 先分清連線、執行與部署
+
+第一次操作請先完成 [M3 的離線與重連練習](../README.md#斷線修復與重連練習)。此處追查 Worker 程式；Hub 端請看[通道導讀](../agenttransport/README.md)。
+
+| 現象／修改目的 | 從哪裡開始 |
+|---|---|
+| 沒有 CONNECTED、心跳或重連異常 | client.go，再核對 TLS 與 Hub endpoint |
+| 命令已收到但被拒絕 | engine.go 的 deadline、UID、revision 與 ledger |
+| CR 寫入後仍無法 Ready | 共用 kube transport 與 M1 Operator |
+| wire 欄位或 hash 不一致 | control.proto 與 agentprotocol |
+
+在專案根目錄執行 `make m3-test` 驗證單元規則；真實雙 Worker、mTLS 與重連由 `make test-e2e-m3` 驗證。不要用刪除 ledger 的方式解決拒絕結果。
+
 操作從 [M3 教學](../README.md) 開始。M3 Agent 在每個 Worker 的 hf-demo 執行，主動連 Hub；它提交 Application CR，底層 Deployment／Service 仍由 [M1 Operator](../../m1/controller/README.md) 維持。M4 沿用此程式，改用 hf-system ledger、明確 tenant allowlist 與 namespaced RoleBinding；完整操作與邊界見 [M4 bootstrap](../../m4/bootstrap/README.md)。
 
 ## 程式與依賴
@@ -92,3 +107,9 @@ Agent SA 可操作 hf-demo 的 Application、讀必要工作負載狀態，以�
 改連線與退避看 client.go，改命令接受／去重看 engine.go，改 wire 型別看 proto／projection，改 CR 核對看共用 kube transport。不要直接改生成的 pb.go，也不要藉 RBAC 擴大成管理員工具。
 
 診斷命令與離線練習見 [M3](../README.md#操作遇到問題時)。Unit 的可控 backend 用來測特定規則；真實 TLS／雙 Worker／恢復與 GC 的實測看 [M3 紀錄](../../../docs/m3-validation.md)；跨階段驗證方式見 [驗證總覽](../../../docs/validation.md)。
+
+## 讀完後去哪裡
+
+- 返回 [M3 逐步操作](../README.md#逐步操作)，對照本輪結果。
+- 需要停止、換課或再次練習，前往 [M3 完成後的選擇](../README.md#完成這一課後去哪裡)。
+- 想繼續理解其他元件，回到 [M3 原理與進階閱讀](../README.md#原理與進階閱讀)。

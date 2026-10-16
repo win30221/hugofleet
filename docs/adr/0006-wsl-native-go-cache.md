@@ -19,3 +19,7 @@ Docker Race 使用相同快取掛載至 `/cache`，來源唯讀，正式 image �
 此選項只影響編譯環境，不改變應用與驗收條件。快取屬於單一 checkout，不能借用其他專案的登記，也不能以清理共用 `/tmp` 取代空間診斷。需預留 Linux 磁碟空間；DB、憑證與 Kubernetes state 不屬於可再生的 Go 快取。
 
 官方依據：[Microsoft 檔案儲存與效能說明](https://learn.microsoft.com/en-us/windows/wsl/filesystems#file-storage-and-performance-across-file-systems)。
+
+## 閱讀後返回
+
+本頁用來查設計原因，不是安裝步驟。返回 [M0 原理與進階閱讀](../../stages/m0/README.md#原理與進階閱讀)，或從[選課與回訪](../../stages/README.md#回來繼續哪一課)接續使用此共用設計的其他階段。其他設計問題見 [ADR 導覽](../README.md#設計問題與-adr-對照)。

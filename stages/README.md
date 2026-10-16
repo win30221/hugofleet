@@ -1,8 +1,36 @@
 # 各階段教學與程式
 
-每個階段所需的程式、YAML／JSON、Bash、Dockerfile、測試與完整教學集中在自己的資料夾。**打開該階段的 README.md 就能開始**；文件也列出新增了什麼、程式閱讀順序及沿用前面哪些元件。
+本頁是選課、跳課與回訪入口。第一次使用從[根 README](../README.md#第一次使用從這裡開始)完成環境準備後，直接進入 [M0](m0/README.md)，不需先讀完整份索引。每課會帶你完成、清理，再進下一課。
 
-M0～M5 各有獨立入口與驗收工具。環境準備見 [根 README](../README.md)，測試方式與證據見 [驗證總覽](../docs/validation.md)。
+## 先選你要做的事
+
+| 你目前的進度 | 下一步 | 完成時應看到什麼 |
+|---|---|---|
+| 還沒操作過 Kubernetes | [M0：部署價格 API](m0/README.md) | 真實 API 回傳 v1、價格 8000 分 |
+| 已理解 Deployment／Service | [M1：Operator](m1/README.md) | 改小的 Deployment 副本被修復 |
+| 想從頁面管理部署 | [M2：Hub](m2/README.md) | 發版、故障、回滾有獨立履歷 |
+| 想操作兩個 Worker | [M3：Agent](m3/README.md) | A 離線時 B 仍能部署，A 當地仍修復 |
+| 想區分帳號與團隊權限 | [M4：租戶安全](m4/README.md) | 可授權部署，跨租戶／低權限操作被拒絕 |
+| 想看部署觀測與交付 | [M5：Dashboard](m5/README.md) | 真實狀態、trace／metrics 與 Helm 元件 |
+
+不需要先手動啟動所有前置階段，各課 up 會準備自己的依賴。筆電一次練習一課；切換前先停止轉送與原 Hub，再用原階段、原 state 執行 down。
+
+第一次操作只需讀該課主線，程式地圖、元件導讀與自動驗收按需要查閱。下方目錄樹是找檔案用，不是待執行清單。
+
+## 回來繼續哪一課
+
+先選上次練習的階段，再判斷原環境還在，還是已執行 down。沿用原 state 核對；不要直接重跑 up 或更換 DB。
+
+| 階段 | 第一次練習 | 上次做到一半／重新練習 | 遇到問題 |
+|---|---|---|---|
+| M0 | [開始本課](m0/README.md#開始前的準備) | [恢復或重新練習](m0/README.md#回來繼續時先選擇) | [排查問題](m0/README.md#操作遇到問題時) |
+| M1 | [開始本課](m1/README.md#開始前的準備) | [恢復或重新練習](m1/README.md#回來繼續時先選擇) | [排查問題](m1/README.md#操作遇到問題時) |
+| M2 | [開始本課](m2/README.md#開始前的準備) | [恢復或重新練習](m2/README.md#回來繼續時先選擇) | [排查問題](m2/README.md#操作遇到問題時) |
+| M3 | [開始本課](m3/README.md#開始前的準備) | [恢復或重新練習](m3/README.md#回來繼續時先選擇) | [排查問題](m3/README.md#操作遇到問題時) |
+| M4 | [開始本課](m4/README.md#開始前的準備) | [恢復或重新練習](m4/README.md#回來繼續時先選擇) | [排查問題](m4/README.md#操作遇到問題時) |
+| M5 | [開始本課](m5/README.md#開始前的準備) | [恢復或重新練習](m5/README.md#回來繼續時先選擇) | [排查問題](m5/README.md#操作遇到問題時) |
+
+只想換課時，先依原課停止流程清理，再點下一課的「開始本課」。元件與程式位置在下方，需要讀程式時再查。
 
 ## 這些文件怎麼使用
 
@@ -12,6 +40,15 @@ M0～M5 各有獨立入口與驗收工具。環境準備見 [根 README](../READ
 | 從零開始操作某階段、解讀結果與排查問題 | 各階段根目錄的 README |
 | 追一個請求、理解程式內部設計、找修改位置 | [pricing-api](m0/pricing-api/README.md)、[Controller](m1/controller/README.md)、[Hub](m2/hub/README.md)、[Agent](m3/agent/README.md)、[Hub Transport](m3/agenttransport/README.md) 的 README |
 | 查精確 API 欄位、設計原因、驗收範圍與證據 | [docs](../docs/README.md) |
+
+每課依相同順序閱讀：
+
+1. 這一課的目標與成果：先知道完成時要看到什麼。
+2. 開始前的準備：工具、目錄、上一課清理與本輪 state。
+3. 逐步操作：按實際流程切換終端與瀏覽器，每步核對結果。
+4. 整課驗證與常見問題：確認整條流程，再查故障原因。
+5. 停止與下次繼續：區分暫停、完整清理、接續與重新練習。
+6. 原理與進階閱讀：架構、程式、替代操作與開發測試。
 
 先跟著操作，再沿程式導讀理解原因。教學中的「預期結果」是操作時要核對的行為；測試證據另在 docs，不把文件更新當成新一輪驗收。
 
@@ -44,10 +81,10 @@ stages/
 │   ├── run.sh、env.sh         ← M3 操作入口與 A／B 終端環境
 │   └── cmd/、config/、build/、scripts/、test/
 ├── m4/
-    ├── README.md、run.sh      ← 真實 OIDC、雙 Worker／Security Profile 操作
-    ├── auth/、httpapi/、web/   ← 登入／session、角色 API、租戶 UI
-    ├── bootstrap/            ← 分離的本地管理員安全資源建立
-    └── cmd/、build/、scripts/、testdriver/、test/
+│   ├── README.md、run.sh      ← 真實 OIDC、雙 Worker／Security Profile 操作
+│   ├── auth/、httpapi/、web/   ← 登入／session、角色 API、租戶 UI
+│   ├── bootstrap/            ← 分離的本地管理員安全資源建立
+│   └── cmd/、build/、scripts/、testdriver/、test/
 └── m5/
     ├── README.md、run.sh、env.sh ← Dashboard／雙 Worker 的獨立操作
     ├── observability/、traceview/、web/ ← telemetry、離線 viewer、UI
@@ -90,14 +127,13 @@ stages/
 
 ## 選擇階段、切換與重建
 
-所有命令在 Linux amd64／Ubuntu WSL2 Bash 執行：
+所有命令在專案根目錄的 Linux amd64／Ubuntu WSL2 Bash 執行。已安裝工具不用重跑 tools，先檢查：
 
 ```bash
-cd /mnt/c/Users/H/Documents/GitHub/win30221/hugofleet
-make tools doctor
+make doctor
 ```
 
-Windows PowerShell 先執行 `wsl -d Ubuntu`，再在 Bash 使用上方命令。原生 Linux checkout 改用自己的專案路徑。每個新終端都要回專案目錄。
+Windows 從專案資料夾開 PowerShell，再執行 `wsl -d Ubuntu`；詳細方式見根 README。各終端從相同專案位置開始，自訂 state 時沿用相同設定。
 
 `run.sh` 在子程序設定環境，不會替父終端設定 kubeconfig。之後自己輸入 kubectl 時，要照該課重新 export／source。`common.sh` 會切回專案根目錄並啟用嚴格錯誤處理；預期失敗的練習用 if 包起來，避免 Shell 因非零退出而結束。
 
@@ -119,14 +155,13 @@ M0／M1 up 完成後返回命令列；M2 up 在前景持續執行 Hub，需保�
 M0–M2 捷徑使用 `hugofleet-m0-demo`／`hugofleet-m1-demo`／`hugofleet-m2-demo`；M3 用 `hugofleet-a`／`hugofleet-b`。kubectl 每次明確指定隔離 kubeconfig 與 context，例如 M1：
 
 ```bash
-cd /mnt/c/Users/H/Documents/GitHub/win30221/hugofleet
 export HF_CLUSTER=hugofleet-m1-demo
 unset HF_LEARNING_ROOT
 source scripts/common.sh
 kubectl --context kind-hugofleet-m1-demo -n hf-demo get applications,deployments,services,pods
 ```
 
-新終端記得重新 source。M0／M1 指南與 M2 教學使用表內的專用學習叢集；[M2 教學](m2/README.md#舊單叢集開發入口) 保留原本 hugofleet-a 的 M2 開發入口。舊 `make demo`／`hub-up` 仍是 M2 單叢集模式；M3 明確使用 `make m3-up`。
+新終端記得重新 source。M0～M2 使用表內的專用學習叢集；M3 使用 hugofleet-a／hugofleet-b，依各階段 up／down 切換。
 
 每階段完成下面練習再繼續：
 
@@ -193,7 +228,7 @@ M5 UI 使用 18095、Dex 使用 5557；預設 Worker 名稱仍為 hugofleet-a／
 |---|---|
 | M0 | [scripts/control.sh](m0/scripts/control.sh)：編譯、映像建置／載入、原生 YAML 部署、轉送、Unit／benchmark |
 | M1 | [scripts/control.sh](m1/scripts/control.sh)：Operator 編譯／安裝、CR 部署、型別／CRD 生成、envtest／Unit；[tools.sh](m1/scripts/tools.sh) 安裝工具 |
-| M2 | [scripts/control.sh](m2/scripts/control.sh)：Hub 編譯、受限憑證 bootstrap、啟動、Unit、舊開發入口 |
+| M2 | [scripts/control.sh](m2/scripts/control.sh)：Hub 編譯、受限憑證 bootstrap、啟動、Unit |
 | M3 | [scripts/control.sh](m3/scripts/control.sh)：Agent 編譯、憑證、Hub／Worker 組裝、Agent 安裝、Unit；[proto.sh](m3/scripts/proto.sh) 管理協定生成 |
 | M4 | [scripts/control.sh](m4/scripts/control.sh)：OIDC／Dex、分離的 Worker bootstrap、Calico、Hub／Agent、真實 enrollment；[e2e.sh](m4/scripts/e2e.sh) 驗收／owned cleanup |
 

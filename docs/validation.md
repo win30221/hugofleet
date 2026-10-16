@@ -6,21 +6,48 @@ HugoFleet 的驗證涵蓋 Go Unit、race、真實 envtest、Dex OIDC、Helm CLI 
 
 以下命令在專案根目錄、Ubuntu WSL2／Linux amd64 的 Bash 執行。需可連線的 Docker Linux engine；M3～M5 使用非 root 使用者。一次執行一組 kind E2E，避免筆電資源競爭。
 
+先選受影響範圍。下表的命令都在專案根目錄執行，命令返回 0 才表示該項檢查完成；文件中的既有 PASS 不會隨命令自動更新。
+
+| 這次改了什麼 | 先執行 | 能確認什麼 |
+|---|---|---|
+| Markdown／範例文字 | `make docs-check` | 本機檔案／章節連結、Bash 語法與三份型別化 JSON |
+| 某階段 Go 程式 | `make mN-test`、`make mN-build`，N 換成階段數字 | 該課單元測試與主機編譯 |
+| M1 API／Controller | 準備 operator-tools／envtest，再 `make verify-generated test-integration` | 生成檔與真實 API server／etcd 行為 |
+| Proto | 準備 proto-tools，再 `make proto-check` | 協定生成碼是否一致 |
+| Helm Chart | 準備 helm-tools，再 `make m5-chart-test` | 真正 Helm CLI 渲染與負向 values |
+| OIDC | `make test-oidc` | 真實 Dex 負向與自然到期，約 15 分鐘 |
+| 部署、連線、GC 或隔離流程 | 該階段 kind E2E，見下表 | 真實工作負載與跨元件結果 |
+
+envtest 沒有 kubelet、Deployment controller 或 GC，不能證明 Pod Ready 或 HTTP 可用。docs-check 不執行範例操作。
+
+### 完整回歸的準備與共用檢查
+
+只有要跑完整回歸才依序執行這一組；已安裝的工具不必每次重裝：
+
 ```bash
 make tools
 make operator-tools envtest proto-tools helm-tools
 make doctor
 make lint test-unit test-integration test-race build
 make verify-generated proto-check docs-check m5-chart-test
-make test-oidc
-make demo-image-build operator-image-build
-make test-e2e-m0 test-e2e-m1 test-e2e
-make test-e2e-m3 test-e2e-m4 test-e2e-m5
 ```
 
-`make test-e2e` 是 M2 驗收入口。`make test-oidc` 自行建立 Dex 與短 session Hub，包含約 15 分鐘的 JWT 自然到期測試，不建立 Worker。其餘工具與各階段環境需求見對應 README。
+先停止會占用相同 Hub／Dex port 的教學實例，再做 OIDC 與 kind E2E。一次執行一組，不使用 `make -j` 搶占筆電資源：
 
-文件檢查會核對 Markdown 本機檔案／章節連結、Bash／sh 範例語法及三份型別化部署 JSON；它不執行範例中的操作。envtest 使用真實 etcd／API server，沒有 kubelet、Deployment controller 或 GC；Pod readiness、HTTP 與刪除回收由 kind E2E 確認。
+| 階段 | 命令 | 需要先準備映像嗎 |
+|---|---|---|
+| M0 | `make test-e2e-m0` | 先 `make demo-image-build` |
+| M1 | `make test-e2e-m1` | 先 `make demo-image-build operator-image-build` |
+| M2 | `make test-e2e` | 先 `make demo-image-build operator-image-build` |
+| M3 | `make test-e2e-m3` | 入口自行建置 |
+| M4 | `make test-e2e-m4` | 入口自行建置，先釋放 18094／5556 |
+| M5 | `make test-e2e-m5` | 入口自行建置，先釋放 18095／5557 |
+
+`make test-oidc` 自行建立 Dex 與短 session Hub，不需要 Worker；先釋放 5556／18094／18444。各 E2E 使用專用名稱／state，保留日誌並限定清理自己的資源。中斷後用原輸出的 state 與正式 down 恢復清理，不刪 ownership 記錄繞過檢查。
+
+### 如何閱讀結果
+
+檢查命令的最終退出碼、測試失敗與 cleanup 結果，不能只搜尋日誌中間的 PASS。失敗先保留輸出，依對應階段的診斷檢查；修正後重跑受影響項目，再將新命令、程式版本與結果記為新證據。
 
 ## 本機驗收證據
 
@@ -77,3 +104,8 @@ Workflow 使用 GitHub-hosted ubuntu-24.04；六階段 kind jobs 依序執行。
 - M4／M5 只有啟用 Calico 的 A Worker 宣稱 NetworkPolicy enforcement；B 不作相同保證。
 - `kubectl port-forward service` 連到選定 Pod，不替代一般 Service dataplane 驗收。
 - 單一 Hub／SQLite、開發憑證與 loopback HTTP Demo 不構成生產級 HA／IAM／災難復原保證。
+
+
+## 查完後返回
+
+如果只是跟著教學操作，回到[選課與回訪](../stages/README.md#回來繼續哪一課)的原課，不必為了前往下一課先執行完整回歸。若正在修改程式，依本頁選擇受影響的測試，完成後核對結果與限制。

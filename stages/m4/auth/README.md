@@ -1,5 +1,21 @@
 # OIDC 與平台 session
 
+本頁是元件導讀。實際練習見 [M4 逐步操作](../README.md#逐步操作)；遇到執行問題先查[排查方式](../README.md#操作遇到問題時)，結束或重開環境依[停止與下次繼續](../README.md#停止與下次繼續)。修改後的驗證範圍見 [M4 驗收](../../../docs/m4-validation.md)。
+
+## 閱讀與操作入口
+
+想登入平台，依 [M4 教學](../README.md) 使用本輪 accounts.json；這份文件用來讀登入程式與修改認證邊界。
+
+| 閱讀順序 | 追查什麼 | 預期理解 |
+|---|---|---|
+| Begin | state、nonce、PKCE 與 binding | 登入交易如何綁定這個瀏覽器 |
+| Complete | 消耗交易、code 交換與 JWT 核對 | 為何失敗不能重用 state |
+| Session／登出 | token hash、TTL、DB 撤銷 | 登入身分與租戶角色為何分開 |
+
+修改後於專案根目錄執行 `make m4-test`。需要真實 Provider 負向驗證時使用 `make test-oidc`，先依 M4 教學釋放相關 ports；單元 fixture 不代表 Dex 驗收。
+
+## 登入交易到平台 session
+
 操作從 [M4 教學](../README.md) 開始。核心在 [oidc.go](oidc.go)，Unit 在 [oidc_test.go](oidc_test.go)，真實 Dex／Hub 驗收在 [test/oidc](../test/oidc/)。
 
 `Begin` 產生一次性 state、nonce、S256 PKCE verifier 和 browser binding；私有登入交易保存於 SQLite，期限五分鐘。瀏覽器僅收到 nonce／challenge／state 與 HttpOnly binding cookie，verifier 不交給瀏覽器。
@@ -22,3 +38,9 @@ export HF_M4_STATE="$PWD/.local/tutorials/m4" # 改成正在運作的同一 stat
 go test -tags=oidcintegration -count=1 -timeout=2m \
   -run TestRealDexCanonicalBackchannel -v ./stages/m4/test/oidc
 ```
+
+## 讀完後去哪裡
+
+- 返回 [M4 逐步操作](../README.md#逐步操作)，對照本輪結果。
+- 需要停止、換課或再次練習，前往 [M4 完成後的選擇](../README.md#完成這一課後去哪裡)。
+- 想繼續理解其他元件，回到 [M4 原理與進階閱讀](../README.md#原理與進階閱讀)。

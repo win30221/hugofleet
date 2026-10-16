@@ -8,7 +8,7 @@ M3 的隨機管理 Token 只有本機單管理者防護，不能辨識使用者�
 
 ## 決策
 
-M4 提供獨立的 OIDC Hub 入口，沿用 M2 的交易／版本／Operation runner 與 M3 的雙向 mTLS 通道。舊 M2／M3 入口拒絕開啟已啟用安全模式的 DB。租戶 slug 為不可變 DNS label，namespace 固定為 hf-<slug>；禁止從請求接受任意 namespace 或 PodSpec。
+M4 提供獨立的 OIDC Hub 入口，沿用 M2 的交易／版本／Operation runner 與 M3 的雙向 mTLS 通道。M2／M3 開發模式拒絕開啟已啟用安全模式的 DB。租戶 slug 為不可變 DNS label，namespace 固定為 hf-<slug>；禁止從請求接受任意 namespace 或 PodSpec。
 
 身分以精確 issuer + sub 綁定；email 僅作顯示。Platform Admin 由本機受信任設定指定精確 subject，Owner／Developer／Viewer 由資料庫 membership 決定，忽略 JWT groups／role 及用戶自填角色。所有管理 API、HTML 頁面與 Operation／audit 查詢在 server-side 授權；變更的交易在冪等查詢前重新查驗角色，避免撤權後重送仍取得舊結果。
 
@@ -34,3 +34,7 @@ ResourceQuota 包含 requests.cpu／requests.memory／limits.cpu／limits.memory
 ## 限制與取捨
 
 Namespace 與安全政策的管理權留在 Worker 管理員，不把 cluster-admin 包成遠端管理 API。平台 Admin 可啟用已 bootstrap 的 profile、管理成員與觀察配額；改變 namespace 安全政策／quota 須以受控 bootstrap 工具更新再同步，不能只改 Hub DB。正式 issuer／client／subject 設定由部署管理員供應；本機 Dex 測試密碼／憑證不代表企業 IAM。仍為單 Hub／SQLite，不提供 HA。M5 的觀測與交付另作 ADR。
+
+## 閱讀後返回
+
+本頁用來查設計原因，不是安裝步驟。返回 [M4 原理與進階閱讀](../../stages/m4/README.md#原理與進階閱讀)，或從[選課與回訪](../../stages/README.md#回來繼續哪一課)接續使用此共用設計的其他階段。其他設計問題見 [ADR 導覽](../README.md#設計問題與-adr-對照)。

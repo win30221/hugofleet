@@ -5,7 +5,7 @@ SHELL := /bin/bash
 test-oidc:
 	@bash stages/m4/scripts/oidc.sh
 
-.PHONY: help tools doctor fmt lint build test-unit test-race benchmark kind-up kind-down demo-image-build demo-image-load demo-deploy demo-forward demo test-e2e test-e2e-m1 test-e2e-m0 operator-tools generate manifests verify-generated envtest test-integration operator-image-build operator-install cache-native hub-bootstrap hub-up
+.PHONY: help tools doctor fmt lint build test-unit test-race benchmark kind-up kind-down demo-image-build demo-image-load test-e2e test-e2e-m1 test-e2e-m0 operator-tools generate manifests verify-generated envtest test-integration operator-image-build operator-install cache-native
 help:
 	@bash scripts/hf.sh help
 
@@ -17,7 +17,7 @@ tools:
 	@bash scripts/bootstrap-tools.sh
 
 .PHONY: docs-check
-doctor fmt lint build docs-check test-unit test-race benchmark kind-up kind-down demo-image-build demo-image-load demo-deploy demo-forward demo test-e2e test-e2e-m1 test-e2e-m0 operator-tools generate manifests verify-generated envtest test-integration operator-image-build operator-install cache-native hub-bootstrap hub-up m0-up m0-forward m0-down m1-up m1-forward m1-down m2-up m2-forward m2-down m3-up m3-down m3-hub-up m3-hub-stop agent-install certs-dev proto-tools proto proto-check test-e2e-m3:
+doctor fmt lint build docs-check test-unit test-race benchmark kind-up kind-down demo-image-build demo-image-load test-e2e test-e2e-m1 test-e2e-m0 operator-tools generate manifests verify-generated envtest test-integration operator-image-build operator-install cache-native m0-up m0-forward m0-down m1-up m1-forward m1-down m2-up m2-forward m2-down m3-up m3-down m3-hub-up m3-hub-stop agent-install certs-dev proto-tools proto proto-check test-e2e-m3:
 	@bash scripts/hf.sh $@
 
 .PHONY: m0-build m0-test m1-build m1-test m2-build m2-test m3-build m3-test

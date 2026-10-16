@@ -806,11 +806,7 @@ make manifests          # 生成 CRD / RBAC
 make proto              # M3: 生成 Protobuf Go / gRPC
 make demo-image-build   # 建立本地 sample images
 make demo-image-load    # 載入目前已存在的 kind Cluster
-make demo-deploy        # M1: Application CR；M0 使用 stages/m0/workload.yaml
-make demo-forward       # 僅 loopback 的 port-forward
 make operator-install   # 在目標 Cluster 安裝 Operator
-make hub-bootstrap      # M2: 產生受限 ServiceAccount kubeconfig
-make hub-up             # M2: 本機 Hub（舊開發入口）
 make m0-up              # 獨立 M0 學習叢集；m0-forward / m0-down
 make m1-up              # 獨立 M1 學習叢集；m1-forward / m1-down
 make m2-up              # 獨立 M2 學習叢集／DB；m2-forward / m2-down
@@ -840,7 +836,6 @@ make m5-down            # owned cleanup，保留私有 state
 make m5-build m5-test
 make test-e2e-m5        # 全新 M5 security／Dashboard／trace／Helm 真實驗收
 make docs-check         # 文件連結、Shell 語法與型別化範例
-make demo               # M2 舊開發入口；保留早期階段的獨立入口
 ```
 
 所有指令要有 `--help` 或 Makefile help、錯誤訊息和清理方法；`kind-down` 只能刪除本專案命名的 Cluster，不能動到使用者其他 Docker/Kubernetes 環境。

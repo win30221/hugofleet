@@ -23,3 +23,7 @@ revision 與 ReplicaSet 的完整歸屬規則見 [ADR 0012](0012-current-revisio
 - 契約詳見 HUGOFLEET_SPEC.md 第 6–11 節；測試範圍見各階段驗收文件。
 - CRD、Protobuf、資料庫 migration、Controller 與安全整合測試在各自里程碑加入，M0 不建立空骨架。
 - 保持原架構：Hub 不持有 Worker cluster-admin kubeconfig；Agent 主動建立 mTLS gRPC 控制通道。
+
+## 閱讀後返回
+
+本頁用來查設計原因，不是安裝步驟。返回 [M3 原理與進階閱讀](../../stages/m3/README.md#原理與進階閱讀)，或從[選課與回訪](../../stages/README.md#回來繼續哪一課)接續使用此共用設計的其他階段。其他設計問題見 [ADR 導覽](../README.md#設計問題與-adr-對照)。

@@ -1,21 +1,122 @@
 # HugoFleet
 
-以 Go、Kubernetes Operator、SQLite 與 Go template UI 製作的應用部署平台。從 [各階段教學與程式](stages/README.md) 開始，先理解一個階段，再往下一個階段走。
+HugoFleet 是以 Go、Kubernetes Operator、SQLite 與 Go template UI 製作的應用部署平台。你可以從部署一個價格 API 開始，逐步學到自動修復、版本管理、雙叢集、租戶權限與可觀測性。
 
-提供 M0～M5 的獨立學習入口，涵蓋 HTTP API、Operator、Hub、雙叢集 Agent、租戶安全與可觀測交付。每階段包含可執行程式、操作教學與測試。
+## 第一次使用：從這裡開始
 
-驗證方式、各階段驗收範圍與對應程式提交的 CI 證據見 [驗證總覽](docs/validation.md)。
+你現在位於專案入口。第一次使用依這條主線前進：
 
-| 想學什麼 | 文件與程式位置 |
+**本頁環境準備 → M0 部署 API → M1 Operator → M2 Hub → M3 雙叢集 → M4 租戶權限 → M5 Dashboard 與觀測**
+
+1. 先完成下方[首次準備環境](#首次準備環境)，直到 `make doctor` 成功。
+2. 接著[開始 M0](stages/m0/README.md)，按終端分工逐步操作。
+3. 每課完成後，依該課的「完成這一課後去哪裡」清理環境，再進下一課。
+
+已經學過、要回來繼續時，使用[選課與回訪](stages/README.md#回來繼續哪一課)。API、架構與驗收文件是按需要查閱的支線，不必先讀完才能開始。
+
+## 首次準備環境
+
+主要環境為 Linux amd64。Windows 使用 Ubuntu WSL2 與 Docker Desktop Linux containers；Hub 的 SQLite 程序鎖使用 Linux flock，請在 WSL2 執行。
+
+Windows 使用者先啟動 Docker Desktop，依 [Docker WSL integration 說明](https://docs.docker.com/desktop/features/wsl/) 啟用 Ubuntu 整合，再依序操作：
+
+1. 在檔案總管開啟下載的 `hugofleet` 資料夾，確認裡面有 `Makefile`、`go.mod` 與 `stages`。
+2. 在檔案總管網址列輸入 `powershell`，按 Enter。
+3. 在 PowerShell 進入 Ubuntu：
+
+```powershell
+wsl -d Ubuntu
+```
+
+確認進入的是專案資料夾：
+
+```bash
+pwd
+ls Makefile go.mod stages
+```
+
+路徑依下載位置而不同，應能列出上述檔案與資料夾。**後續所有 Bash 命令都從專案根目錄執行。** 需要新終端時，也從同一個資料夾開 PowerShell，再進入 WSL。原生 Linux 使用者直接在專案根目錄開啟 Bash。
+
+需要的基礎工具為 make、Bash、curl、tar、sha256sum、sed、GNU timeout／realpath，以及可連線的 Docker。M3～M5 使用非 root 的 Linux 使用者。
+
+首次安裝專案工具：
+
+```bash
+make tools
+```
+
+這會下載、校驗固定版本的 Linux 版 Go、kind、kubectl，安裝到專案 `.tools`，不覆寫全域工具。即使 Windows 已安裝 Go，首次使用仍需準備這些 Linux 工具；安裝完成後不用每次重跑。
+
+接著檢查環境：
+
+```bash
+make doctor
+```
+
+預期印出 Go／kind／kubectl 版本與 Docker Linux engine 資訊，沒有錯誤。最後的 `Project cluster=hugofleet-a` 是共用命令的預設選擇，不表示叢集已建立；各階段 up 會選擇自己的環境。
+
+如果下載 kind release asset 逾時，可在原安裝結束後改用相同固定版本的源碼安裝：
+
+```bash
+HF_KIND_SOURCE=1 make tools
+make doctor
+```
+
+若 `doctor` 失敗，先讀錯誤：找不到工具就核對安裝是否完成；Docker 無法連線就回到本節確認 Docker Desktop 與 Ubuntu 整合。需要查共用設定時看[腳本說明](scripts/README.md)，處理後回本頁重跑 `make doctor`，成功才進入 M0。
+
+不要同時執行兩份工具安裝。固定版本與校驗碼見 [scripts/versions.env](scripts/versions.env)，Go 相依見 [go.mod](go.mod)／[go.sum](go.sum)。
+
+## 接下來做什麼
+
+環境檢查成功後，下一站是 **[開始 M0：把價格 API 部署到 Kubernetes](stages/m0/README.md)**。本頁準備到這裡就完成；完整啟動、轉送與呼叫命令集中在 M0 教學。
+
+M0 會帶你確認 `/version` 為 v1、價格結果為 8000 分，再練習更新與故障恢復。操作失敗時，前往 [M0 排查](stages/m0/README.md#操作遇到問題時)；完成時，依 [M0 停止與下次繼續](stages/m0/README.md#停止與下次繼續)決定保留或清理環境。
+
+**先完成一課，再進下一課。** 不必讓之前的 Demo 持續執行。每課主線結尾都有下一課入口；想了解全部路線時再看下表。
+
+### 學習路線
+
+| 階段 | 你會做什麼 | 完成後應能理解 | 教學 |
+|---|---|---|---|
+| M0 | 部署 API、更新映像、增加副本、恢復壞版 | 映像、Pod、Deployment、Service 與探針 | [開始 M0](stages/m0/README.md) |
+| M1 | 提交 Application、觀察底層漂移修復 | Operator 如何持續維持期望配置 | [開始 M1](stages/m1/README.md) |
+| M2 | 從 UI 建立應用、發布、回滾與查看履歷 | Hub、SQLite、Release 與 Operation 的分工 | [開始 M2](stages/m2/README.md) |
+| M3 | 部署到兩個 Worker、停止 Agent 再重連 | 主動 mTLS 通道與各叢集自主修復 | [開始 M3](stages/m3/README.md) |
+| M4 | 登入、啟用租戶、授權並驗證拒絕結果 | DB 角色、配額與 Worker 安全邊界 | [開始 M4](stages/m4/README.md) |
+| M5 | 用 Dashboard 操作、看 trace／metrics 與 Helm 交付 | 如何追查一次部署並理解觀測結果 | [開始 M5](stages/m5/README.md) |
+
+## make 指令怎麼讀
+
+`make <目標名稱>` 會讀取根目錄的 [Makefile](Makefile)，執行專案定義的操作。
+
+| 例子 | 用途 |
 |---|---|
-| M0：HTTP API、映像、Deployment／Service | [stages/m0](stages/m0/README.md) |
-| M1：Application CRD、Operator、漂移修復 | [stages/m1](stages/m1/README.md) |
-| M2：Hub UI／REST、SQLite、發版與回滾 | [stages/m2](stages/m2/README.md) |
-| M3：雙叢集 Agent、gRPC、mTLS、斷線重連 | [stages/m3](stages/m3/README.md) |
-| M4：OIDC、租戶／配額、Security Profile | [stages/m4](stages/m4/README.md)／[分項結果](docs/m4-validation.md) |
-| M5：Dashboard、OTel／metrics、Helm 交付 | [stages/m5](stages/m5/README.md)／[本機驗收結果](docs/m5-validation.md) |
+| `make tools` | 準備專案工具；名稱有 s，沒有 `make tool` |
+| `make doctor` | 檢查環境 |
+| `make m0-up` | 組裝並啟動 M0 |
+| `make m0-forward` | 持續轉送 M0 服務；Ctrl+C 停止連線 |
+| `make m0-down` | 刪除 M0 學習叢集，保留工具與測試產物 |
+| `make help` | 查看操作順序與命令用途 |
 
-每階段的 Go 程式、YAML／JSON、Dockerfile、Bash、測試與教學放在自己的資料夾。各 README 包含檔案用途、終端配置、第一次操作、預期結果、問題排查、結束與再練習方式。每個啟動入口自行準備需要的元件，叢集與執行資料分開；建議一次練習一個階段。
+`make tools doctor` 表示依序執行兩個目標。請勿加 `-j` 並行執行有先後依賴的準備步驟。初次學習照各階段教學即可，不需要把 help 裡的命令全部跑過。
+
+`make kind-up` 只準備指定的 kind 叢集，不等同完整啟動一課。日常學習使用明確的 `m0-up`～`m5-up`。跨階段切換、DB 與新 session 的操作見 [stages 索引](stages/README.md#選擇階段切換與重建)。
+
+## 文件怎麼讀
+
+| 你現在想做什麼 | 從哪裡讀 |
+|---|---|
+| 實際操作一課 | 上表的階段教學：命令、預期結果、排查與結束方式 |
+| 找元件、切換或重建練習 | [stages 索引](stages/README.md) |
+| 看程式如何處理請求 | 各課最後的程式導讀，再進入元件 README |
+| 寫 API client | [docs 索引](docs/README.md) 中對應版本的 API 契約 |
+| 決定跑哪些測試、核對既有結果 | [驗證總覽](docs/validation.md) |
+| 理解設計取捨 | [技術文件與 ADR 導覽](docs/README.md) |
+| 核對產品與里程碑要求 | [HUGOFLEET_SPEC.md](HUGOFLEET_SPEC.md) |
+
+各階段採相同閱讀順序：目標與成果 → 前置準備 → 逐步操作 → 整課驗證與排查 → 停止與下次繼續 → 原理與進階閱讀。每一步都先確認結果，再執行下一步；自訂資料目錄在首次啟動前選定。
+
+教學的「預期結果」供你核對操作；驗收紀錄對應明確命令、程式提交與 CI，不代表後續修改已自動通過。
 
 ## 多叢集架構與示範
 
@@ -29,71 +130,21 @@ flowchart LR
   AgentB --> AppB[Application CR → Operator → Deployment／Service]
 ```
 
-M3 起 Hub 不持有 Worker kubeconfig；M4 加入真實 OIDC、租戶授權與隔離，M5 加入完整 Dashboard、trace／metrics 與 Helm 交付。Worker 回報真實 Kubernetes 狀態，SQLite 保存意圖及不可變操作履歷。
+M2 使用受限 kubeconfig 管理單叢集；M3 起 Hub 不持有 Worker kubeconfig。M4 加入 OIDC 與租戶安全，M5 加入 Dashboard、trace／metrics 與 Helm。Worker 回報真實狀態，SQLite 保存意圖與操作履歷。
 
-[M5 示範 MP4](docs/media/m5-demo.mp4)／[播放頁](docs/media/m5-demo.html) 展示部署、故障、修復、回滾、多叢集與權限拒絕。影片是 19 張真實瀏覽器操作截圖的時間順序剪輯，並非連續錄影；等待片段省略，原始時間與 SHA-256 同附。可對照 [實際回滾 trace](docs/media/m5-rollback-trace.html)、[故障演練教學](stages/m5/README.md#故障修復與回滾) 與 [驗收及未完成項目](docs/m5-validation.md)。
-
-## 文件怎麼讀
-
-1. 先看本頁的環境需求，再到 [stages 索引](stages/README.md) 選階段。
-2. 打開該階段的 README，依教學完成一條操作流程。命令旁會說明用途與結果；遇到問題先看該文件的診斷段落。
-3. 想理解程式，從該階段的「本階段的程式導讀」往下讀，再進入元件 README：[價格 API](stages/m0/pricing-api/README.md)、[Controller](stages/m1/controller/README.md)、[Hub](stages/m2/hub/README.md)、[Agent](stages/m3/agent/README.md)、[Hub 遠端通道](stages/m3/agenttransport/README.md)。
-4. 想核對 API 欄位、設計原因或驗收範圍與證據，再查 [docs](docs/README.md)。教學中的「預期」與驗收紀錄中的「實測」分開閱讀。
-
-你可以停留在任一階段反覆練習。後面的啟動入口會準備自己需要的共用元件，不要求前面的 Demo 持續執行。資料夾依元件首次加入的階段分類；目前是一份共用 Go module，各階段使用目前版本的程式，共用同一份現行實作。
-
-## 首次準備環境
-
-主要執行環境為 Linux amd64。Windows 使用 Ubuntu WSL2 與 Docker Desktop Linux containers；Hub 的 SQLite 程序鎖使用 Linux flock，請在 WSL2 執行 Hub。
-
-需要 make、Bash、curl、tar、sha256sum、sed、GNU timeout／realpath，以及可連線的 Docker。M3～M5 以非 root 的 Linux 使用者執行。Windows PowerShell 先進入 WSL：
-
-```powershell
-wsl -d Ubuntu
-```
-
-以下與各階段教學中的 Bash 命令，都在 Ubuntu WSL2／Linux 執行：
-
-Windows checkout 位於 `C:\Users\H\Documents\GitHub\win30221\hugofleet` 時，WSL 使用以下路徑。首次操作先安裝專案工具，再檢查環境：
-
-```bash
-cd /mnt/c/Users/H/Documents/GitHub/win30221/hugofleet
-make tools
-make doctor
-```
-
-原生 Linux checkout 改用自己的專案路徑。WSL 無法連線 Docker 時，依 [Docker WSL integration 說明](https://docs.docker.com/desktop/features/wsl/) 啟用 Ubuntu 整合。工具安裝至專案 .tools；固定版本、SHA-256 與 image digest 以 [scripts/versions.env](scripts/versions.env)、[go.mod](go.mod)／[go.sum](go.sum) 為準。
-
-`make tools` 下載與安裝工具；`make doctor` 檢查固定版本與 Docker，會編譯版本檢查小程式。若 kind release asset 下載逾時，可用以下既有選項從相同固定版本源碼安裝；Go 與 kubectl 仍依腳本校驗。
-
-```bash
-HF_KIND_SOURCE=1 make tools
-make doctor
-```
-
-不要同時執行兩份工具安裝；等原命令結束後再重試。每個新 Bash 終端的環境設定、kubeconfig 與終端分工，請照自己階段 README 操作。
-
-選擇階段、啟動／結束、切換與重建資料的命令集中在 [stages 索引](stages/README.md#選擇階段切換與重建)。也可進入該階段資料夾，依自己的 README 使用 bash run.sh up／down。舊 make demo／hub-up 的單叢集開發入口見 [M2 教學](stages/m2/README.md#舊單叢集開發入口)。
+[M5 播放頁](docs/media/m5-demo.html)／[MP4](docs/media/m5-demo.mp4) 展示部署、故障、修復、回滾與多叢集操作。影片由 19 張真實瀏覽器操作截圖按順序剪輯，並非連續錄影；可對照[實際回滾 trace](docs/media/m5-rollback-trace.html) 與 [M5 驗收範圍](docs/m5-validation.md)。
 
 ## 平時需要關注的東西
 
 | 位置 | 用途 |
 |---|---|
-| [stages](stages/README.md) | 學習、找程式、修改範例；這是主要入口 |
-| [docs](docs/README.md) | API 契約、架構決策、實測證據 |
-| [HUGOFLEET_SPEC.md](HUGOFLEET_SPEC.md) | 產品需求與里程碑規格 |
-| [AGENTS.md](AGENTS.md) | AI 協作規則與工作範圍 |
-| [scripts](scripts/README.md)／[tools](tools/README.md)／[deploy](deploy/README.md) | 跨階段共用環境、工具與 kind 設定 |
-| [Makefile](Makefile)／[PROJECT](PROJECT)／[.github](.github/workflows/ci.yml) | 命令入口、Kubebuilder metadata、CI 設定 |
-| .local | kubeconfig、ownership、DB 與憑證；詳見 [stages 執行資料](stages/README.md#執行資料與原始碼的分工) |
-| .tools／.cache／bin／artifacts | 已安裝工具、Go 快取、執行檔、原始驗收日誌；詳見 [共用工具說明](scripts/README.md) |
+| [stages](stages/README.md) | 各階段教學、程式、範例與測試 |
+| [scripts](scripts/README.md)／[tools](tools/README.md)／[deploy](deploy/README.md) | 共用環境、工具與 kind 設定 |
+| `.local` | kubeconfig、ownership、DB、帳號與憑證；不當一般快取清除 |
+| `.tools`／`.cache`／`bin`／`artifacts` | 已安裝工具、Go 快取、執行檔與原始驗收日誌 |
+| [go.mod](go.mod)／[go.sum](go.sum) | 單一共用 Go module 與固定相依，各階段不另建 module |
+| [PROJECT](PROJECT) | Kubebuilder metadata，Application 路徑指向 M1 |
+| [CI workflow](.github/workflows/ci.yml) | Unit／Race、envtest、OIDC、Helm CLI 與六階段 kind E2E |
+| [AGENTS.md](AGENTS.md) | AI 開發協作規則 |
 
-學習執行資料位於 .local/tutorials，各階段 README 說明 DB、憑證、ownership 與資料保留方式。
-
-Hub 在 M2 使用受限 kubeconfig；M3 改由 Worker Agent 主動建立 mTLS gRPC 通道，Hub 不持有 Worker kubeconfig。M2／M3 管理介面使用本機 127.0.0.1:18090；M3 Demo Token 與憑證的操作及限制見 M3 README。
-
-Repository 位址為 [win30221/hugofleet](https://github.com/win30221/hugofleet)，Go module 使用 github.com/win30221/hugofleet。Hosted CI 的驗收範圍與程式提交見 [驗證總覽](docs/validation.md)。
-
-根目錄的 [go.mod](go.mod)／[go.sum](go.sum) 管理單一 module 與固定相依；不要在每階段另建 module。Makefile 是命令入口，PROJECT 保存 Kubebuilder 的 API scaffold metadata，Application 路徑指向 M1；它不是教學操作設定。
-
-[.github/workflows/ci.yml](.github/workflows/ci.yml) 定義 hosted CI 的 Unit／Race、envtest、Helm CLI 檢查、獨立真實 Dex OIDC 負向測試與 M0～M5 六階段 kind E2E，支援 push、PR 與手動 workflow dispatch；閱讀設定可知道自動驗收範圍。本機學習用 stages 的入口，遠端 CI 是否執行與成功仍以實際結果為準。
+各階段使用目前版本的共用程式，不是六份歷史程式快照。Repository 為 [win30221/hugofleet](https://github.com/win30221/hugofleet)，Go module 為 `github.com/win30221/hugofleet`。Hosted CI 的對應提交與結果見[驗證總覽](docs/validation.md)。

@@ -27,3 +27,7 @@ Unit 涵蓋舊／目前 ReplicaFailure、foreign owner、未觀測 ReplicaSet �
 逾時 Unit 涵蓋舊逾時、過早逾時、真正目前逾時及缺少／foreign／未觀測 ReplicaSet。真實壞版必須回報 ProgressDeadlineExceeded，回滾必須 SUCCEEDED；兩者與 Unit／envtest／race 均有對應驗收證據。
 
 M1 kind 測試核對相同配置與純縮放的新 revision：新的 ReplicaSet UID、Deployment owner UID、template revision、observedGeneration 與完整 Ready／Available 副本都須成立。同 revision 重送須保持 ReplicaSet 與 Deployment generation 不變。M2 則驗證配額恢復及 FAILED 履歷保留。
+
+## 閱讀後返回
+
+本頁用來查設計原因，不是安裝步驟。返回 [M1 原理與進階閱讀](../../stages/m1/README.md#原理與進階閱讀)，或從[選課與回訪](../../stages/README.md#回來繼續哪一課)接續使用此共用設計的其他階段。其他設計問題見 [ADR 導覽](../README.md#設計問題與-adr-對照)。

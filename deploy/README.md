@@ -1,5 +1,22 @@
 # 共用 kind 環境設定
 
+第一次操作不需要修改這裡。先依[根 README](../README.md)準備環境，再使用[階段教學](../stages/README.md)的 `make mN-up`；啟動入口會自動使用此模板。
+
+## 什麼時候才需要看這裡
+
+| 你的目的 | 做法 | 影響 |
+|---|---|---|
+| 跑一課 Demo | 用該課 up／down | 自動建立與限定清理 owned kind |
+| 理解啟動設定 | 看下方模板轉換流程 | 讀取模板與生成 YAML 即可 |
+| 改 etcd 儲存模式 | 新叢集建立前設定 HF_ETCD_STORAGE | 不替既有叢集搬資料 |
+| 改應用映像、資源或探針 | 回該課 Application／工作負載設定 | 不需修改 kind 模板 |
+
+此目錄是 kind 節點設定，不是應用部署入口；模板不能用 kubectl apply 安裝。
+
+環境的啟動、成功判斷、排查與停止方式均以[對應階段教學](../stages/README.md)為準；本頁說明設定來源，不是一套額外必做的啟動流程。
+
+## 共用設定與啟動等待
+
 [kind/single-node.yaml](kind/single-node.yaml) 是 M0～M5 共用的單節點 kind 模板。啟動時 [scripts/kind.sh](../scripts/kind.sh) 依叢集選擇 API port，將本次生成的設定存入自己的執行資料目錄。M4／M5 的 A Worker 另外設定 disableDefaultCNI／pod subnet 並安裝固定版本、校驗 SHA-256 的 Calico；只有明確的 owned M4／M5 state 能使用此 Security Profile。
 
 預設 etcd 使用 RAM profile；Docker node 停止／重啟後不能假設資料仍在。HF_ETCD_STORAGE 可選 memory／disk，既有本機實測範圍以 [驗收紀錄](../docs/README.md) 為準。
@@ -30,3 +47,8 @@ deploy/kind/single-node.yaml
 | M4 tenant／Agent 固定安全資源 | stages/m4/bootstrap/provision.go；由本地管理員工具建立 |
 
 生成的 kind YAML 供診斷，正式來源是此模板。已存在叢集的 up 不會因模板修改自動重建 node。disk profile 不提供 kind down 後的自動恢復，也不能替代 Hub DB／UID 與 Worker 的一致性流程。
+
+
+## 查完後返回
+
+若從環境準備前來，回到[根 README](../README.md#首次準備環境)完成檢查，再[開始 M0](../stages/m0/README.md)。若正在練習某一課，從[選課與回訪](../stages/README.md#回來繼續哪一課)返回原課；沿用原環境與 state，不需因閱讀本頁重新啟動整課。

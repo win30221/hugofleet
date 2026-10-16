@@ -11,3 +11,7 @@ M0 的 HTTP 與 Kubernetes JSON 驗收使用 stdlib Go `stages/m0/cmd/m0check`�
 ## 取捨
 
 Go template UI 與後端共用語言、型別與建置流程，無需 Node.js 工具鏈。互動以伺服器渲染表單及有界頁面更新為主；產品重點為 Kubernetes Operator、gRPC、多叢集、安全與可觀測性。
+
+## 閱讀後返回
+
+本頁用來查設計原因，不是安裝步驟。返回[選課與回訪](../../stages/README.md#回來繼續哪一課)接續原課。其他設計問題見 [ADR 導覽](../README.md#設計問題與-adr-對照)。

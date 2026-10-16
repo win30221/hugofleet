@@ -1,5 +1,19 @@
 # Controller：從 Application 到工作負載
 
+本頁是元件導讀。實際練習見 [M1 逐步操作](../README.md#逐步操作)；遇到執行問題先查[排查方式](../README.md#操作遇到問題時)，結束或重開環境依[停止與下次繼續](../README.md#停止與下次繼續)。修改後的驗證範圍見 [M1 驗收](../../../docs/m1-validation.md)。
+
+## 先選操作還是讀程式
+
+第一次學 Operator，先完成 [M1 教學](../README.md)，實際看到「改 Application → 工作負載更新」與「改 Deployment → 被修復」。這份文件接著解釋原因。
+
+| 你要處理什麼 | 閱讀位置 | 驗證方式 |
+|---|---|---|
+| 新增／限制 spec 欄位 | API 型別與 validation | 生成 CRD，再做 Unit／envtest |
+| Deployment／Service 配置 | workload.go | 投影測試，再用 kind 看真實結果 |
+| ownership、進度與錯誤 | application_controller.go | 狀態測試、envtest，必要時 kind E2E |
+
+命令都在專案根目錄執行。先用 `make m1-test`；真實 API server 測試先準備 `make operator-tools envtest`，再 `make test-integration`。這些不會替代 Pod／GC 的 E2E。
+
 完整操作從 [M1 教學](../README.md) 開始。這個套件執行持續的 Reconcile；M2／M3 使用同一 Operator，改變的是誰提交 Application，不是重新做另一套 Controller。
 
 ## 檔案與閱讀順序
@@ -80,3 +94,9 @@ CRD／RBAC 由 markers 生成，命令見 [M1 程式導讀](../README.md#本階�
 ProgressDeadlineExceeded 也須歸屬目前 owned／observed ReplicaSet：condition LastUpdateTime 不得早於 ReplicaSet CreationTimestamp 加上設定的 progressDeadlineSeconds。舊逾時不能立即讓新回滾失敗；無法歸屬時維持 Progressing，Hub 仍受原 operation deadline 限制。Operator 不自行改寫 Deployment status 或製造 Ready；完整決策見 [ADR 0012](../../../docs/adr/0012-current-revision-replicaset-evidence.md)。
 
 Unit 可用可控物件測比對與錯誤，envtest 用真實 API server 測 schema／status／ownership，kind 才驗證 Pod、GC、漂移與真實 HTTP。驗收範圍見 [M1 驗收](../../../docs/m1-validation.md)，跨階段檢查與 CI 證據見 [驗證總覽](../../../docs/validation.md)。
+
+## 讀完後去哪裡
+
+- 返回 [M1 逐步操作](../README.md#逐步操作)，對照本輪結果。
+- 需要停止、換課或再次練習，前往 [M1 完成後的選擇](../README.md#完成這一課後去哪裡)。
+- 想繼續理解其他元件，回到 [M1 原理與進階閱讀](../README.md#原理與進階閱讀)。

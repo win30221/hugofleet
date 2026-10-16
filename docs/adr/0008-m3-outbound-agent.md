@@ -16,10 +16,14 @@ Agent 使用一個 executor 與大小 1 的接收緩衝；Hub 每 session 最多
 
 Hub 重啟及 Agent 重連，每次重新下發 mutation 前先 RequestSnapshot。相符 CR 直接恢復 Applied acknowledgement，不重新 update CR；刪除 snapshot 是唯讀且等待實際 GC。過期 Operation 保持 TIMED_OUT，晚到 Ready 只更新目前觀測，保留 FAILED Release／最後成功 revision。003_agent.sql 在交易中加入 agent_version 並保留既有履歷；共用 Store 會繼續套用至 schema 5，功能依入口模式配置，見 [Hub 導讀](../../stages/m2/hub/README.md)。M2 與 M3 使用不同 DB，啟動時拒絕模式混用。
 
-獨立學習入口將 M0／M1／M2 分別放在 hugofleet-m0-demo／hugofleet-m1-demo／hugofleet-m2-demo；M3 為 hugofleet-a／b。各階段不要求先跑前一階段，關閉後可以重跑。舊 make demo／hub-up 與各階段 E2E 保留。32 GB 筆電建議一次只啟動一個階段。
+獨立學習入口將 M0／M1／M2 分別放在 hugofleet-m0-demo／hugofleet-m1-demo／hugofleet-m2-demo；M3 為 hugofleet-a／b。各階段不要求先跑前一階段，關閉後可以重跑。各階段 E2E 使用獨立驗收入口。32 GB 筆電建議一次只啟動一個階段。
 
 依 [ADR 0009](0009-stage-source-layout.md)，各階段程式、YAML／JSON、Bash、完整教學及程式導讀集中於 stages/m0～m5；學習入口實際使用各自 manifest／policy。產生的 kubeconfig、ownership、M2 SQLite／受限憑證、M3 SQLite／TLS／Token 位於 .local/tutorials 對應階段，與文件及版本控制隔離。共用元件只維護一份；docs 提供 API／ADR／驗收證據，stages/README 提供階段切換索引。
 
 版本固定：grpc-go 1.82.1（要求 Go 1.25，沿用 Go 1.27.2）、protoc 33.0、protoc-gen-go-grpc 1.6.2（要求 Go 1.25／grpc 1.81）、protoc-gen-go 與 runtime 使用相同 `v1.36.12-0.20260120151049-f2248ac996af`。沿用 controller-runtime 0.25.1／Kubernetes 1.37.0。Compiler release zip 用官方 release asset SHA-256 校驗，Go module 使用 go.sum。官方依據：[grpc-go go.mod](https://github.com/grpc/grpc-go/blob/v1.82.1/go.mod)、[Go gRPC generator go.mod](https://github.com/grpc/grpc-go/blob/cmd/protoc-gen-go-grpc/v1.6.2/cmd/protoc-gen-go-grpc/go.mod)、[protoc release](https://github.com/protocolbuffers/protobuf/releases/tag/v33.0)、[Go generator/runtime 原則](https://github.com/protocolbuffers/protobuf-go/blob/master/README.md)、[Protobuf 相容性](https://protobuf.dev/support/cross-version-runtime-guarantee/)。
 
 M3 使用單一 Hub、單一 demo namespace、人工 registry、SQLite 與 kind RAM etcd。leaf 憑證有效 24 小時，到期使用新 state 練習；保留既有資料的原地輪替未驗收。ConfigMap 是 Worker Kubernetes 儲存，不保證 Docker node／主機重啟後仍存在；完整持久叢集／備份恢復需另驗收。此 ADR 記錄設計；實際測試結果以 M3 validation 為準。
+
+## 閱讀後返回
+
+本頁用來查設計原因，不是安裝步驟。返回 [M3 原理與進階閱讀](../../stages/m3/README.md#原理與進階閱讀)，或從[選課與回訪](../../stages/README.md#回來繼續哪一課)接續使用此共用設計的其他階段。其他設計問題見 [ADR 導覽](../README.md#設計問題與-adr-對照)。

@@ -1,5 +1,20 @@
 # Hub Agent Transport：接受連線與派送命令
 
+本頁是元件導讀。實際練習見 [M3 逐步操作](../README.md#逐步操作)；遇到執行問題先查[排查方式](../README.md#操作遇到問題時)，結束或重開環境依[停止與下次繼續](../README.md#停止與下次繼續)。修改後的驗證範圍見 [M3 驗收](../../../docs/m3-validation.md)。
+
+## 如何使用這份導讀
+
+先完成 [M3 操作](../README.md)，再從「Connect 接受連線 → Call 派送 → Agent 回覆 → Runner 觀測」追查一次操作。這個套件在 Hub 執行，Agent 程式在 Worker 執行。
+
+| 要查什麼 | 先讀哪一段 |
+|---|---|
+| Worker 為何不能上線 | TLS／Hello 檢查、session 註冊 |
+| 為何離線時新操作回 503 | registry 連線狀態與 Call |
+| ACK 收到卻仍未 SUCCEEDED | Apply／Observe 與 Runner 的終態分工 |
+| timeout 或重連的舊結果 | command 關聯、deadline 與 session 清理 |
+
+修改後在專案根目錄執行 `make m3-test`；涉及雙向通道與真實恢復時，再執行 M3 kind E2E。
+
 此套件在 **Hub 程序**執行，實作 [M2 Service.Transport](../../m2/hub/service/service.go)；與 Worker 的 [Agent](../agent/README.md) 共同完成 M3。完整操作與診斷從 [M3 教學](../README.md) 開始。
 
 ## 檔案與周邊元件
@@ -67,3 +82,9 @@ CR 已提交後，Runner 仍要 Observe 到真正 Ready 才 Store.Finish SUCCEED
 協定入口是 [control.proto](../api/proto/hugofleet/agent/v1/control.proto)，生成的程式在 api/agent/v1。型別／hash 轉換在 agentprotocol。改協定要同時考慮 Hub／Agent 的欄位與驗證，再用固定工具生成；`make proto`／`proto-check` 的操作見 [M3 導讀](../README.md#本階段的程式導讀)。
 
 TLS、registry 與 Hello 必須一起核對；不新增任意 shell／YAML payload。重啟／ACK 遺失、負向 TLS、雙 kind 的實測見 [M3 紀錄](../../../docs/m3-validation.md)。跨階段驗證方式見 [驗證總覽](../../../docs/validation.md)。
+
+## 讀完後去哪裡
+
+- 返回 [M3 逐步操作](../README.md#逐步操作)，對照本輪結果。
+- 需要停止、換課或再次練習，前往 [M3 完成後的選擇](../README.md#完成這一課後去哪裡)。
+- 想繼續理解其他元件，回到 [M3 原理與進階閱讀](../README.md#原理與進階閱讀)。
