@@ -35,6 +35,29 @@ HugoFleet 操作指南
   M2／M3 UI：http://127.0.0.1:18090；M4 UI：http://127.0.0.1:18094。
   詳細流程與重建資料方式：stages/README.md、stages/mN/README.md。
 
+M0／M1 練習：命令會自動選擇各課的學習叢集，依 README 順序操作
+  m0-update-good / m1-update-good   更新健康版（M1 同時設定兩副本）
+  m0-scale-two          M0 增加為兩副本
+  m1-drift              刻意把 Deployment 改為一副本，Application 保持兩副本
+  m0-break / m1-break    部署故障版；M1 等待降級，M0 提交後用 status 查原因
+  m0-restore / m1-restore   恢復健康 v1
+  m0-status / m1-status  查詢配置與工作負載
+  m0-observe / m1-observe   持續觀察 Deployment；Ctrl+C 停止觀察
+  m1-delete             刪除 M1 練習應用並等待相依清理
+  M1 發版短命令依序使用 revision 1 → 2 → 3 → 4；自訂 revision 見教學。
+
+M2～M5 練習：發版、回滾與角色授權由瀏覽器操作
+  m2-status / m2-hub-up  查詢 M2 工作負載／只重啟前景 Hub（沿用原 DB）
+  m3-status-a / m3-status-b   查詢 A／B 工作負載
+  m3-forward-a / m3-forward-b   轉送 pricing-a／b 至 18080／18081
+  m3-agent-stop-a / m3-agent-start-a   暫停／恢復 A Agent
+  m3-drift-a / m3-observe-a   製造 A 漂移／持續觀察修復
+  m4-forward-a / m5-forward-a   轉送 A 的 team-a/pricing-api 至 18080
+  m4-workload-status / m5-workload-status   查詢 A 租戶應用與事件
+  m5-drift / m5-observe   製造 A 漂移／持續觀察修復
+  m5-agent-stop-b / m5-agent-start-b   暫停／恢復 B Agent
+  短命令會載入各課環境；自訂 session 仍須沿用相同 HF_MN_STATE。
+
 開發與驗證：以下名稱都以 make 開頭，初次學習不必全部執行
   help                  顯示本指南
   fmt                   執行 gofmt，會修改 Go 原始碼

@@ -11,5 +11,6 @@ case "${1:-up}" in
   ;;
  forward) exec bash stages/m0/scripts/control.sh forward ;;
  down) exec bash scripts/kind.sh down ;;
- *) fail 'Supported learning actions: up, forward, down.' ;;
+ update-good|scale-two|break|restore|status|observe) exec bash stages/m0/scripts/lesson.sh "$1" ;;
+ *) fail 'Supported learning actions: up, forward, down, update-good, scale-two, break, restore, status, observe.' ;;
 esac

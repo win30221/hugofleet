@@ -92,10 +92,23 @@ Overview 顯示完整授權範圍的 counts 與最多 20 筆操作；Application
 ### 終端 B：轉送，終端 C：呼叫服務
 
 ```bash
+make m5-forward-a
+```
+
+命令選 Worker A，預設 team-a 的 pricing-api 與本機 18080，不必先 export 或 source。自訂資料目錄時，每個終端仍使用同一份 `HF_M5_STATE`。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m5/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
+
+```bash
 source stages/m5/env.sh a
 export HF_TENANT=team-a HF_APP=pricing-api
 make m5-forward
 ```
+
+</details>
 
 等待 B 顯示 `Forwarding`，保持執行。轉送只建立本機測試連線，不會建立 Ingress。終端 C 呼叫：
 
@@ -106,7 +119,7 @@ curl --fail --silent --show-error http://127.0.0.1:18080/quote \
   -d '{"amount_cents":20000,"customer_tier":"vip","coupon_code":"SAVE100"}'
 ```
 
-預期最終價格為 8000 分。Ctrl+C 停止這個 port-forward；不刪除工作負載。B 的應用改用 source stages/m5/env.sh b，並指定自己租戶與應用。發版／回滾替換 Pod 時，既有 port-forward 可能因原 Pod 結束而退出；等 rollout 完成後重新執行 make m5-forward，再驗證新版本。
+預期最終價格為 8000 分。Ctrl+C 停止這個 port-forward；不刪除工作負載。本課主線固定呼叫 Worker A。發版／回滾替換 Pod 時，既有 port-forward 可能因原 Pod 結束而退出；等 rollout 完成後重新執行 `make m5-forward-a`，再驗證新版本。若要轉送 B 或其他應用，使用下方進階環境設定及原有 `make m5-forward`。
 
 **下一步：**確認本步結果後，前往[故障、修復與回滾](#故障修復與回滾)。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 
@@ -117,12 +130,39 @@ curl --fail --silent --show-error http://127.0.0.1:18080/quote \
 Owner 在詳情發布 pricing-api:v2-good／replicas 2，等 SUCCEEDED／READY。終端 A 明確選 Worker A，再製造漂移：
 
 ```bash
+make m5-drift
+make m5-observe
+```
+
+這兩個命令選 Worker A，預設操作 team-a 的 pricing-api。Application 保持 2，故意把 Deployment 改為 1，再持續觀察 Operator 修回 2。最後 READY 應為 `2/2`；修復太快可能看不到中間的 1。按 Ctrl+C 停止觀察。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m5/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
+
+```bash
 source stages/m5/env.sh a
 kubectl --kubeconfig "$KUBECONFIG" --context "kind-$CLUSTER" \
   -n hf-team-a scale deployment/pricing-api --replicas=1
 kubectl --kubeconfig "$KUBECONFIG" --context "kind-$CLUSTER" \
   -n hf-team-a rollout status deployment/pricing-api --timeout=180s
 ```
+
+</details>
+
+再次核對 Worker A 的配置與實際 Pod：
+
+```bash
+make m5-workload-status
+```
+
+Application 與 Deployment 都應要求兩個副本，價格 API READY 為 `2/2`。漂移修復不新增發版 revision。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m5/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
 
 Operator 應恢復 2。再執行以下命令，確認 Deployment 的 spec.replicas 與 READY 副本數都為 2：
 
@@ -132,6 +172,8 @@ kubectl --kubeconfig "$KUBECONFIG" --context "kind-$CLUSTER" \
 kubectl --kubeconfig "$KUBECONFIG" --context "kind-$CLUSTER" \
   -n hf-team-a get deployment pricing-api -o jsonpath='{.spec.replicas}{"\n"}'
 ```
+
+</details>
 
 Dashboard Conditions 反映真實結果。rollout status 只等待部署狀態，逾時不會停止控制器；請讀 events 後再繼續。
 
@@ -150,14 +192,38 @@ Dashboard Conditions 反映真實結果。rollout status 只等待部署狀態�
 在終端 A 選擇 Worker B，暫停受限 Agent，觀察 Dashboard 的 DISCONNECTED 與最後心跳；當地 Operator 持續工作。若 B 尚未建立應用，此步只驗證 Agent 連線，不代表已測試 B 的業務服務。所有演練只操作這個 owned Worker，完成後恢復 replicas 1。
 
 ```bash
+make m5-agent-stop-b
+```
+
+這個命令固定停止 Worker B 的 Agent，不會停止 A 或既有服務。先回 Dashboard 確認 B 顯示 DISCONNECTED，再執行恢復。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m5/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
+
+```bash
 source stages/m5/env.sh b
 kubectl --kubeconfig "$KUBECONFIG" --context "kind-$CLUSTER" \
   -n hf-system scale deployment/hugofleet-agent --replicas=0
 ```
 
+</details>
+
 先回 Dashboard 重新整理，等待 B 顯示 DISCONNECTED 並核對最後心跳。預設心跳逾時為 15 秒；若仍 CONNECTED，先確認 Agent 已縮為零並查看日誌，不要立刻恢復。
 
 確認離線結果後，再於同一終端恢復：
+
+```bash
+make m5-agent-start-b
+```
+
+命令等待 B Agent Pod 就緒；回 Dashboard 等 B 顯示 CONNECTED，才能確認控制通道已恢復。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m5/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
 
 ```bash
 kubectl --kubeconfig "$KUBECONFIG" --context "kind-$CLUSTER" \
@@ -165,6 +231,8 @@ kubectl --kubeconfig "$KUBECONFIG" --context "kind-$CLUSTER" \
 kubectl --kubeconfig "$KUBECONFIG" --context "kind-$CLUSTER" \
   -n hf-system rollout status deployment/hugofleet-agent --timeout=180s
 ```
+
+</details>
 
 Agent rollout 完成後，再回 Dashboard 等 B 顯示 CONNECTED；Pod 就緒本身不代表控制通道已連上。
 
@@ -205,7 +273,19 @@ Owner／Viewer 不具有全域 telemetry 權限。操作歷史仍以 SQLite 為�
 | Agent 斷線 | 查 status、Agent 日誌與憑證；UNKNOWN 不代表 Pod 停止 |
 | Helm ownership 衝突 | 核對原 state 的 values／receipt／release，不接管外來資源 |
 
-在查詢終端載入本輪 Worker A 環境後檢查：
+在專案根目錄的查詢終端操作，自訂 state 時沿用同一路徑：
+
+先確認管理平台與應用兩層狀態：
+
+```bash
+make m5-status
+make m5-workload-status
+```
+
+第一個查 Hub／Dex／Agent，第二個查 Worker A 預設 team-a 的 pricing-api、期望副本與事件。查不到應用時，先回 Dashboard 看建立操作；需要日誌時再展開。
+
+<details>
+<summary>展開：詳細狀態與日誌指令</summary>
 
 ```bash
 source stages/m5/env.sh a
@@ -213,6 +293,8 @@ kubectl --context kind-hugofleet-a -n hf-system logs deployment/hugofleet-agent 
 kubectl --context kind-hugofleet-a -n hf-team-a get applications,deployments,pods
 kubectl --context kind-hugofleet-a -n hf-team-a get events --sort-by=.lastTimestamp
 ```
+
+</details>
 
 ## 停止與下次繼續
 

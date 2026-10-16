@@ -149,6 +149,19 @@ curl --fail http://127.0.0.1:18080/quote \
 
 ### 7. 終端 A：查看 Application 與工作負載
 
+查看你要求的配置，以及 Operator 建立的工作負載：
+
+```bash
+make m1-status
+```
+
+命令會自動選擇本課叢集，列出 Application、兩邊的期望副本與工作負載。初始預期 revision 為 1、映像為 `pricing-api:v1`、一個價格 API 副本就緒。Operator 自己也有 Deployment／Pod，請分清楚名稱。
+
+Application 是你要求的配置，Operator 依它設定 Deployment 與 Service，Kubernetes 再執行 Pod。後面改需求時，要修改 Application。
+
+<details>
+<summary>展開：底層 kubectl 指令與詳細核對</summary>
+
 先設定目前終端的 M1 工具與 kubeconfig：
 
 ```bash
@@ -195,9 +208,26 @@ kubectl --context kind-hugofleet-m1-demo -n hf-demo \
 
 初始預期 revision 為 1、image 為 `pricing-api:v1`、一個副本就緒，Ready 為 True。`observedGeneration` 應對應目前 `metadata.generation`。
 
+</details>
+
 **下一步：**確認本步結果後，前往[8. 終端 A：更新健康版本與副本數](#8-終端-a更新健康版本與副本數)。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 
 ### 8. 終端 A：更新健康版本與副本數
+
+這次正式改需求：「使用健康新版 v2-good，並執行兩份價格 API。」先在終端 B 按 Ctrl+C 停止轉送，終端 A 執行：
+
+```bash
+make m1-update-good
+```
+
+命令修改 **Application**，提交 revision 2，等待 Operator 處理目前配置並回報 Ready，最後列出配置與 Pod。預期目前 generation 已被觀測、observedRevision 為 2、映像為 `pricing-api:v2-good`，價格 API Deployment READY 為 `2/2`。
+
+終端 B 執行 `make m1-forward`，終端 C 用 `curl --fail http://127.0.0.1:18080/version` 確認為 `v2-good`。每次換版後都要重建轉送。
+
+本課短命令自動選擇 M1 練習叢集與專案工具，依序使用 revision 1 → 2 → 3 → 4。revision 表示提交配置的編號；不符合步驟時命令會停止。如果配置已提交但等待逾時，先用 `make m1-status` 查原因，不必重送。自行修改過 revision 時，使用下方完整指令並選新的 revision。
+
+<details>
+<summary>展開：底層 kubectl 指令與詳細核對</summary>
 
 本課以下命令假設依序操作、沒有插入其他 Application 修改。如果已自行練習，先讀取目前 revision，再選新的 revision。
 
@@ -255,9 +285,37 @@ curl --fail http://127.0.0.1:18080/version
 
 預期變成 `v2-good`。port-forward 連著特定 Pod，健康更新或恢復後需重建轉送。
 
+</details>
+
 **下一步：**確認本步結果後，前往[9. 終端 A：觀察漂移修復](#9-終端-a觀察漂移修復)。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 
 ### 9. 終端 A：觀察漂移修復
+
+前一步的 Application 要求兩份服務。這次故意只把底下的 Deployment 改成一份，觀察 Operator 是否依 Application 修回來：
+
+```bash
+make m1-drift
+make m1-observe
+```
+
+| 時間點 | Application 要求 | Deployment 設定 |
+|---|---:|---:|
+| 修改前 | 2 | 2 |
+| 刻意改動後 | 2 | 1 |
+| Operator 修復後 | 2 | 2 |
+
+兩邊配置不一致就叫「漂移」。這一步驗證 Operator 會持續維持要求。修復可能很快，看不到中間的 1 也正常；最後價格 API READY 應回到 `2/2`。
+
+觀察命令持續執行；按 Ctrl+C 只停止觀察。接著執行：
+
+```bash
+make m1-status
+```
+
+輸出的 Application 與 Deployment 期望副本都應為 2，revision 仍為 2。若真的要長期改成一份，應修改 Application。
+
+<details>
+<summary>展開：底層 kubectl 指令與詳細核對</summary>
 
 目前 Application 要求兩個副本。這次刻意直接把底層 Deployment 改成一個：
 
@@ -288,9 +346,26 @@ kubectl --context kind-hugofleet-m1-demo -n hf-demo \
 
 M0 的 Deployment controller 會維持 Deployment 自己的副本設定；M1 又多了一層 Operator，依 Application 修正 Deployment 的配置。若希望長期改成一個副本，應修改 Application。
 
+</details>
+
 **下一步：**確認本步結果後，前往[10. 終端 A：部署故障版本](#10-終端-a部署故障版本)。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 
 ### 10. 終端 A：部署故障版本
+
+這次讓 Application 明確要求故障版，觀察 Operator 如何回報部署問題：
+
+```bash
+make m1-break
+```
+
+命令提交 revision 3、故障版 v2-broken、兩個副本，等待 Operator 回報 **Degraded（降級）**，並列出狀態與事件。這裡等待成功表示「已觀測到異常」。
+
+預期目前 generation 的 Ready=False、Degraded=True，原因包含 `ProgressDeadlineExceeded`；故障 Pod 為 Running，但未 Ready，因為 `/readyz` 固定回 503。等待逾時時先查看 `make m1-status` 與下方事件命令，不可直接認定驗證成功。
+
+這次 Application 本身就要求壞版，Operator 會照要求部署並回報失敗；恢復版本由下一步指定。
+
+<details>
+<summary>展開：底層 kubectl 指令與詳細核對</summary>
 
 提交 revision 3，改用故障映像：
 
@@ -323,9 +398,31 @@ kubectl --context kind-hugofleet-m1-demo -n hf-demo \
 
 資源足夠時，先前的健康 Pod 繼續服務，故障 Pod 不會成為 Service 的就緒端點。
 
+</details>
+
 **下一步：**確認本步結果後，前往[11. 終端 A：用新 revision 恢復 v1](#11-終端-a用新-revision-恢復-v1)。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 
 ### 11. 終端 A：用新 revision 恢復 v1
+
+由你提交一份新配置，把映像恢復為健康的 v1：
+
+```bash
+make m1-restore
+```
+
+命令提交 revision 4、v1、兩個副本，等待目前配置 Ready。預期 observedRevision 為 4、映像為 `pricing-api:v1`，價格 API READY 為 `2/2`，故障 Pod 最終退出。
+
+終端 B 按 Ctrl+C，再執行 `make m1-forward`；終端 C 驗證：
+
+```bash
+curl --fail http://127.0.0.1:18080/version
+curl --include --fail http://127.0.0.1:18080/readyz
+```
+
+預期為 v1、HTTP 200。再執行第 6 節價格請求得到 8000。revision 是提交的編號，因此恢復 v1 仍使用新的 revision 4。
+
+<details>
+<summary>展開：底層 kubectl 指令與詳細核對</summary>
 
 恢復時提交新的 revision 4，指定 v1，保留兩個副本：
 
@@ -368,9 +465,24 @@ curl --include --fail http://127.0.0.1:18080/readyz
 
 M1 的恢復是手動提交配置，沒有保存完整成功快照或提供 Hub 回滾介面。revision 會寫入 Pod template，新 revision 即使配置相同也會觸發獨立 rollout；同 revision 重送維持冪等。原因見 [ADR 0012](../../docs/adr/0012-current-revision-replicaset-evidence.md)。
 
+</details>
+
 **下一步：**確認本步結果後，前往[12. 終端 A：刪除 Application，觀察相依資源清理](#12-終端-a刪除-application觀察相依資源清理)。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 
 ### 12. 終端 A：刪除 Application，觀察相依資源清理
+
+最後練習移除整個價格 API。先在終端 B 按 Ctrl+C 停止轉送，再執行：
+
+```bash
+make m1-delete
+```
+
+命令刪除本課 pricing-api Application，等待 Kubernetes 清理它擁有的 Deployment 與 Service，最後列出剩餘資源。價格 API 的 ReplicaSet／Pod 也應最終消失；若還在 Terminating，稍候再查。
+
+Operator 自己的 Deployment／Pod 保留是正常的：管理程式與被管理的價格 API 是兩個不同程式。重新建立價格 API 可執行 `make m1-up`，從 revision 1 開始。
+
+<details>
+<summary>展開：底層 kubectl 指令與詳細核對</summary>
 
 先在終端 B 按 Ctrl+C 停止轉送，再刪除 Application：
 
@@ -396,6 +508,8 @@ kubectl --context kind-hugofleet-m1-demo -n hf-demo \
 ```
 
 確認 pricing-api 的 Application、Deployment、Service、ReplicaSet、Pod 最終都消失；若 Pod 尚在 Terminating，等待後再查。**Operator 的 Deployment／Pod 繼續存在是正常的**，它與被管理的價格 API 是不同程式。
+
+</details>
 
 **下一步：**前往[整課驗證](#整課驗證與常見問題)，核對這一輪的結果。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 

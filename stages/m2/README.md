@@ -42,6 +42,20 @@ Windows 從專案資料夾開 PowerShell，執行 `wsl -d Ubuntu`；後續 Bash 
 
 **用途：**將某個映像變成叢集中實際執行、能接受 HTTP 呼叫的服務。
 
+終端 A 啟動本課的管理平台：
+
+```bash
+make doctor
+make m2-up
+```
+
+`m2-up` 自動選擇 M2 叢集、專案工具、受限 kubeconfig 與預設 DB。第一次使用不需手動 export 或 source。若要接續自訂 DB，先設定同一份 `HF_HUB_DATABASE`；不要清除它。啟動最後會持續輸出 Hub 日誌，保留這個終端。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若要直接執行底層 kubectl，先依本課設定 `HF_CLUSTER=hugofleet-m2-demo` 並載入 `scripts/common.sh`；短命令會自行處理。
+
 終端 A 執行以下命令。這是第一次使用預設 M2 環境的設定；若要接續自訂 DB，保留原 HF_HUB_DATABASE，不執行清除它的 unset。
 
 ```bash
@@ -51,6 +65,8 @@ source scripts/common.sh
 make doctor
 make m2-up
 ```
+
+</details>
 
 #### 瀏覽器：建立第一個應用
 
@@ -62,7 +78,7 @@ make m2-up
 |---|---|---|
 | A | Hub 啟動與日誌 | 保持前景執行 |
 | B | make m2-forward | 回專案根目錄，保持轉送 |
-| C | curl 或 kubectl | HTTP 只需 URL；kubectl 要 export HF_CLUSTER、source common.sh |
+| C | curl 或 make m2-status | HTTP 只需 URL；短命令自動選擇 M2 環境 |
 | 瀏覽器 | 管理 UI | 使用精確的 127.0.0.1:18090；M2 不用登入 |
 
 up 自行準備依賴，不需要先開 M0／M1 Demo。完成後應有 Operator，還沒有 pricing-api；由你提交建立請求後才有業務工作負載。
@@ -122,6 +138,19 @@ curl --fail http://127.0.0.1:18080/quote \
 
 在應用詳細頁「發布新版本」，把 Image 改為 pricing-api:v2-good、Replicas 改為 2，其他配置保持不變，按「建立新的 revision」。這一次接受的完整配置會成為 Release revision 2。
 
+等待 Operation SUCCEEDED、Application READY。終端 C 核對實際副本：
+
+```bash
+make m2-status
+```
+
+這個命令只查詢 M2 的 Application、Deployment、Service、Pod 與事件。預期價格 API READY 為 `2/2`，兩個新版 Pod 就緒。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若要直接執行底層 kubectl，先依本課設定 `HF_CLUSTER=hugofleet-m2-demo` 並載入 `scripts/common.sh`；短命令會自行處理。
+
 等待 Operation SUCCEEDED、Application READY。終端 C 先載入 M2 查詢環境，再核對兩個副本：
 
 ```bash
@@ -131,6 +160,8 @@ source scripts/common.sh
 kubectl --context kind-hugofleet-m2-demo -n hf-demo get deployment pricing-api
 kubectl --context kind-hugofleet-m2-demo -n hf-demo get pods -o wide
 ```
+
+</details>
 
 應有兩個新版的就緒副本。確認舊版 Pod 已退出，在終端 B 按 Ctrl+C、重新 make m2-forward，再於終端 C 呼叫 /version，應為 v2-good。
 
@@ -272,6 +303,17 @@ M2 的資源限制是單應用配置預檢，沒有跨應用資源總量排程�
 
 依「管理 HTTP → SQLite 操作 → CR → Deployment／Pod」的順序查，先找流程停在哪層。在新查詢終端：
 
+先查本課的工作負載與事件：
+
+```bash
+make m2-status
+```
+
+若仍無法判斷，再展開查看 Application 詳細狀態與 Operator 日誌。
+
+<details>
+<summary>展開：詳細狀態與日誌指令</summary>
+
 ```bash
 export HF_CLUSTER=hugofleet-m2-demo
 unset HF_LEARNING_ROOT
@@ -281,6 +323,8 @@ kubectl --context kind-hugofleet-m2-demo -n hf-demo get application pricing-api 
 kubectl --context kind-hugofleet-m2-demo -n hf-demo get events --sort-by=.lastTimestamp
 kubectl --context kind-hugofleet-m2-demo -n hf-demo logs deployment/hugofleet-operator --tail=100
 ```
+
+</details>
 
 Application 不存在時，先看 UI Operation 是否還 QUEUED／DISPATCHED、Hub 的錯誤與 Cluster CONNECTED；Application 存在但工作負載失敗，讀 CR conditions、Pod events 與 Operator 日誌。Hub 日誌在前景終端 A，不是另一個 M2 Hub Pod。
 
@@ -336,6 +380,17 @@ make m2-up
 這個入口會重新準備／安裝共用元件與產生受限憑證，然後啟動同一 DB；它不會重新 apply M1 的初始 application.yaml。若只想重啟 Hub，且原 kind／Operator 與受限憑證仍有效，可用下面較小的步驟，避免再次建置所有映像：
 
 ```bash
+make m2-hub-up
+```
+
+這個命令只重新啟動前景 Hub，使用本課受限 kubeconfig 與原 DB，不重建 Worker 或重裝 Operator。預設 DB 為 `.local/tutorials/m2/hub/hub.db`；若原本使用自訂 DB，先設定同一份 `HF_HUB_DATABASE`。憑證仍需有效；啟動失敗時先看錯誤，不要切換成新 DB。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若要直接執行底層 kubectl，先依本課設定 `HF_CLUSTER=hugofleet-m2-demo` 並載入 `scripts/common.sh`；短命令會自行處理。
+
+```bash
 export HF_CLUSTER=hugofleet-m2-demo
 unset HF_LEARNING_ROOT
 source scripts/common.sh
@@ -345,7 +400,9 @@ export HF_HUB_POLICY="$PWD/stages/m2/policy.json"
 bash stages/m2/scripts/control.sh hub-up
 ```
 
-若使用自訂 DB，上方 HF_HUB_DATABASE 改成那一份實際路徑。憑證需要重發時，在相同環境先 `bash stages/m2/scripts/control.sh bootstrap`，再 hub-up。啟動前須明確設定 HF_HUB_KUBECONFIG 與 HF_HUB_DATABASE；缺少設定時，內部啟動命令會拒絕執行。
+</details>
+
+若使用自訂 DB，沿用那份實際的 HF_HUB_DATABASE。憑證過期時，先停止 Hub，再以原 DB 執行 `make m2-up`，重新產生受限憑證。只有直接執行展開區塊的內部命令時，才需要自行設定 HF_HUB_KUBECONFIG 與 HF_HUB_DATABASE；短命令會準備這些設定。
 
 自訂 DB 時每次沿用相同 HF_HUB_DATABASE。bootstrap 產生短期 namespace 憑證，預期約 8 小時，需重新 bootstrap 並重啟 Hub 才讀取新檔案。
 

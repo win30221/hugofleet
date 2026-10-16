@@ -42,7 +42,18 @@ Windows 從專案資料夾開 PowerShell，執行 `wsl -d Ubuntu`；後續 Bash 
 | C | B 的服務轉送 18081，保持前景 |
 | D | HTTP／REST 查詢；也可另開查詢用終端 |
 
-每個新終端都從專案根目錄開始。預設 state 為 `.local/tutorials/m3`；自訂時，每個終端先 export 同一路徑，再 source env.sh。例如另開 A 查詢終端：
+每個新終端都從專案根目錄開始。state 是本輪 DB、憑證與叢集記錄所在的資料目錄，預設為 `.local/tutorials/m3`。主線先使用預設值；例如另開 A 查詢終端：
+
+```bash
+make m3-status-a
+```
+
+查 B 使用 `make m3-status-b`。短命令會選定對應 Worker，載入本課工具、state 與 kubeconfig；不必先 source。自訂 session 時，每個終端仍需先設定同一份 `HF_M3_STATE`。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m3/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
 
 ```bash
 # 僅自訂 session 時加：export HF_M3_STATE="$PWD/.local/tutorials/m3/session-02"
@@ -50,7 +61,9 @@ source stages/m3/env.sh a
 kubectl --context kind-hugofleet-a -n hf-demo get deployments,pods
 ```
 
-查 B 改成 `source stages/m3/env.sh b`，kubectl context 也改成 kind-hugofleet-b。source env.sh 會設定 HF_CLUSTER、HF_LEARNING_ROOT、KUBECONFIG 並切回專案根目錄。up 本身在子程序執行，不會替父終端完成這個設定。
+</details>
+
+只有直接操作底層 kubectl 時，才需要先 source 對應 Worker 的 env.sh。短命令在自己的子程序中完成設定，不會改動目前終端的環境。
 
 ## 逐步操作
 
@@ -98,12 +111,25 @@ M2 的表單欄位與版本規則仍適用。第一次建立兩邊都保持 port
 例如查看 A 的物件：
 
 ```bash
+make m3-status-a
+```
+
+預期 pricing-a 的 Deployment READY 為 `1/1`、Pod 就緒，Application 存在。查 B 使用 `make m3-status-b`。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m3/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
+
+```bash
 source stages/m3/env.sh a
 kubectl --context kind-hugofleet-a -n hf-demo get applications,deployments,services,pods
 kubectl --context kind-hugofleet-a -n hf-demo get application pricing-a -o yaml
 ```
 
-查 B 時換 env b、context b、名稱 pricing-b。平台同租戶名稱唯一，因此即使分到不同 cluster，仍用不同名稱。image tag 是程式建置版本，revision 是每個應用獨立的部署版本；A rev 2 不會推進 B revision。
+</details>
+
+短命令已區分 A／B，不需要自行更換 context。平台同租戶名稱唯一，因此即使分到不同 cluster，仍用不同名稱。image tag 是程式建置版本，revision 是每個應用獨立的部署版本；A rev 2 不會推進 B revision。
 
 **下一步：**確認本步結果後，前往[實際呼叫兩個 Worker](#實際呼叫兩個-worker)。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 
@@ -114,18 +140,44 @@ kubectl --context kind-hugofleet-a -n hf-demo get application pricing-a -o yaml
 執行後等 Forwarding 訊息，保持此終端執行：
 
 ```bash
+make m3-forward-a
+```
+
+這個命令選 Worker A 的 pricing-a，轉送到本機 18080。看到 Forwarding 後保留此終端；Ctrl+C 只會停止連線。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m3/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
+
+```bash
 source stages/m3/env.sh a
 kubectl --context kind-hugofleet-a -n hf-demo port-forward --address 127.0.0.1 service/pricing-a 18080:8080
 ```
+
+</details>
 
 #### 終端 C：轉送 Worker B
 
 使用另一個本機連接埠，保持此終端執行：
 
 ```bash
+make m3-forward-b
+```
+
+這個命令選 Worker B 的 pricing-b，使用本機 18081，與 A 的轉送分開。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m3/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
+
+```bash
 source stages/m3/env.sh b
 kubectl --context kind-hugofleet-b -n hf-demo port-forward --address 127.0.0.1 service/pricing-b 18081:8080
 ```
+
+</details>
 
 #### 終端 D：確認兩個 API
 
@@ -149,9 +201,22 @@ done
 在終端 A 操作。先由 UI 將 pricing-a 更新為 replicas=2 並等 SUCCEEDED／READY，再停止 A Agent：
 
 ```bash
+make m3-agent-stop-a
+```
+
+這次停止的是 A 的通訊 Agent，價格 API 與 Operator 繼續執行。回到管理頁等待 A 顯示 DISCONNECTED，應用現況顯示 UNKNOWN，再繼續；這不代表服務 Pod 停止。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m3/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
+
+```bash
 source stages/m3/env.sh a
 kubectl --context kind-hugofleet-a -n hf-demo scale deployment/hugofleet-agent --replicas=0
 ```
+
+</details>
 
 正常關閉會較快 DISCONNECTED；沒有 heartbeat 時約 15 秒逾時。重新整理首頁及應用詳細頁，A 應用顯示 UNKNOWN，保留最近觀測時間；B 仍可正常發布。新的 A 部署、更新、回滾與刪除會以 503 拒絕，不會默默入列。
 
@@ -166,9 +231,23 @@ kubectl --context kind-hugofleet-a -n hf-demo scale deployment/hugofleet-agent -
 終端 A 修改底層 Deployment：
 
 ```bash
+make m3-drift-a
+make m3-observe-a
+```
+
+Application 仍要求 2，這次只把 Deployment 改為 1。即使 Agent 已停止，當地 Operator 仍應把它修回 2，最終 READY 為 `2/2`。修復可能快到看不到中間狀態；按 Ctrl+C 停止觀察，再用 `make m3-status-a` 核對。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m3/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
+
+```bash
 kubectl --context kind-hugofleet-a -n hf-demo scale deployment/pricing-a --replicas=1
 kubectl --context kind-hugofleet-a -n hf-demo get deployment/pricing-a -w
 ```
+
+</details>
 
 Operator 不依賴 Agent／Hub，會把 replicas 修復為 2。Ctrl+C 結束 watch。
 
@@ -177,9 +256,22 @@ Operator 不依賴 Agent／Hub，會把 replicas 修復為 2。Ctrl+C 結束 wat
 終端 A 執行：
 
 ```bash
+make m3-agent-start-a
+```
+
+命令把 Agent 恢復為一個副本，等待 Pod 就緒；接著回管理頁等待 A 顯示 CONNECTED。Pod 就緒與控制通道連線是兩個要分別確認的結果。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m3/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
+
+```bash
 kubectl --context kind-hugofleet-a -n hf-demo scale deployment/hugofleet-agent --replicas=1
 kubectl --context kind-hugofleet-a -n hf-demo rollout status deployment/hugofleet-agent --timeout=180s
 ```
+
+</details>
 
 A 重新握手、核對持久化 ledger 與實際 CR，再恢復 READY。ACK 不表示 rollout 成功；應以 Operation SUCCEEDED、CR 與 Deployment readiness 判斷。
 
@@ -225,7 +317,19 @@ A 重新握手、核對持久化 ledger 與實際 CR，再恢復 READY。ACK 不
 
 先分三段：HTTP 是否能管理 Hub → 指定 Agent 是否 CONNECTED → 指定 Worker 的 CR／workload 是否 Ready。Hub /healthz 正常只代表 HTTP 程序可回應，不代表雙 Worker 部署成功。
 
-以下查 A；查 B 改 env、context 與 pricing-b。新終端先 cd 專案，自訂 session 先 export HF_M3_STATE：
+新查詢終端先回專案根目錄；自訂 session 時沿用同一份 HF_M3_STATE：
+
+先分別查兩個 Worker：
+
+```bash
+make m3-status-a
+make m3-status-b
+```
+
+先確認問題發生在哪一邊，再展開日誌命令找原因。
+
+<details>
+<summary>展開：詳細狀態與日誌指令</summary>
 
 ```bash
 source stages/m3/env.sh a
@@ -235,6 +339,8 @@ kubectl --context kind-hugofleet-a -n hf-demo logs deployment/hugofleet-agent --
 kubectl --context kind-hugofleet-a -n hf-demo logs deployment/hugofleet-operator --tail=100
 kubectl --context kind-hugofleet-a -n hf-demo get events --sort-by=.lastTimestamp
 ```
+
+</details>
 
 查看 Agent 的非 secret 設定與 Hub 實際位址：
 

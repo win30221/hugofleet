@@ -113,9 +113,22 @@ make m4-up
 送出只代表請求已接受。等待 Operation SUCCEEDED／Application READY，再於終端 B 執行：
 
 ```bash
+make m4-forward-a
+```
+
+命令選 Worker A，預設 team-a 的 pricing-api 與本機 18080，不需先 export 或 source。若本輪使用自訂資料目錄，仍須先設定同一份 `HF_M4_STATE`。
+
+<details>
+<summary>展開：底層指令與環境設定</summary>
+
+若直接使用 kubectl，先在同一終端執行 `source stages/m4/env.sh a`，操作 B 時改用 `b`；自訂 state 先設定同一路徑。短命令會自行載入環境。
+
+```bash
 export HF_M4_STATE="$PWD/.local/tutorials/m4" # 自訂 state 時改成同一個路徑
 HF_CLUSTER=hugofleet-a HF_TENANT=team-a HF_APP=pricing-api make m4-forward
 ```
+
+</details>
 
 等待 `Forwarding` 訊息，保持終端 B 執行；終端 C 呼叫：
 
@@ -175,7 +188,19 @@ curl -fsS -H 'Content-Type: application/json' \
 | Pod 因配額無法建立 | 讀 Operation、CR conditions 與 Worker events，不能只看 Deployment 存在 |
 | down ownership 不符 | 回原 state 操作，保留 ownership 記錄供診斷 |
 
-查詢終端先載入 A 環境；自訂 state 先 export 同一路徑：
+查詢終端回專案根目錄；自訂 state 時沿用同一路徑：
+
+先分開確認「管理平台是否正常」與「應用是否就緒」：
+
+```bash
+make m4-status
+make m4-workload-status
+```
+
+第一個查 Hub／Dex／Agent，第二個查 Worker A 預設 team-a 的 pricing-api、期望副本與事件。若應用尚未建立，找不到指定物件是排查線索，先回 UI 看建立操作。
+
+<details>
+<summary>展開：詳細狀態與日誌指令</summary>
 
 ```bash
 source stages/m4/env.sh a
@@ -183,6 +208,8 @@ kubectl --context kind-hugofleet-a -n hf-system logs deployment/hugofleet-agent 
 kubectl --context kind-hugofleet-a -n hf-team-a get applications,deployments,pods
 kubectl --context kind-hugofleet-a -n hf-team-a get events --sort-by=.lastTimestamp
 ```
+
+</details>
 
 ## 停止與下次繼續
 

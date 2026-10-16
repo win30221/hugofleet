@@ -171,6 +171,17 @@ curl --fail http://127.0.0.1:18080/quote \
 
 ### 7. 終端 A：查看 Kubernetes 資源
 
+查看目前的 Deployment、Service、Pod 與事件：
+
+```bash
+make m0-status
+```
+
+命令會自動選擇本課叢集。預期價格 API Deployment READY 為 `1/1`、一個價格 API Pod 就緒，Service 存在。Deployment 管理 Pod 的版本與份數；Pod 真正執行程式；Service 提供服務入口。
+
+<details>
+<summary>展開：底層 kubectl 指令與詳細核對</summary>
+
 接下來直接使用 kubectl。先設定目前終端的 M0 環境：
 
 ```bash
@@ -204,9 +215,24 @@ kubectl --context kind-hugofleet-m0-demo \
 
 映像是打包好的程式，Pod 執行程式，Deployment 管理 Pod，Service 提供服務入口。本機 `18080` 經轉送連到 Pod 的 `8080`。
 
+</details>
+
 **下一步：**確認本步結果後，前往[8. 終端 A：更新健康版本](#8-終端-a更新健康版本)。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 
 ### 8. 終端 A：更新健康版本
+
+這次要把價格 API 換成健康新版，副本數保持目前設定。
+
+```bash
+make m0-update-good
+```
+
+命令會更新映像並等待部署完成，最後列出 Pod。成功後，終端 B 按 Ctrl+C，再執行 `make m0-forward`；終端 C 用 `curl --fail http://127.0.0.1:18080/version` 確認回傳 `v2-good`。轉送連著特定 Pod，因此換版後要重建。
+
+主線的短命令會自動選擇 M0 練習叢集與專案工具，不必先設定 kubectl 環境。
+
+<details>
+<summary>展開：底層 kubectl 指令與詳細核對</summary>
 
 將映像改為 `v2-good`：
 
@@ -242,9 +268,22 @@ curl --fail http://127.0.0.1:18080/version
 
 預期版本變成 `v2-good`。重新建立轉送，是因為 port-forward 連著特定 Pod，原連線不會自動切換到新版 Pod。
 
+</details>
+
 **下一步：**確認本步結果後，前往[9. 終端 A：增加副本數](#9-終端-a增加副本數)。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 
 ### 9. 終端 A：增加副本數
+
+這次保留同一個版本，請 Kubernetes 同時執行兩份價格 API：
+
+```bash
+make m0-scale-two
+```
+
+命令會把 Deployment 副本設為 2 並等待更新完成。預期 READY 為 `2/2`，有兩個就緒的價格 API Pod。需要再查一次時執行 `make m0-status`。
+
+<details>
+<summary>展開：底層 kubectl 指令與詳細核對</summary>
 
 將副本數改為兩個：
 
@@ -269,9 +308,25 @@ kubectl --context kind-hugofleet-m0-demo -n hf-demo \
 
 預期 Deployment READY 為 `2/2`，有兩個就緒的價格 API Pod。Kubernetes 使用同一個映像啟動兩份程式。
 
+</details>
+
 **下一步：**確認本步結果後，前往[10. 終端 A：部署故障版本](#10-終端-a部署故障版本)。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 
 ### 10. 終端 A：部署故障版本
+
+這次刻意換成故障版，學習「程式正在執行」與「能接收流量」的差別：
+
+```bash
+make m0-break
+make m0-status
+```
+
+第一個命令只提交故障映像，返回不代表更新完成。第二個命令查看 Pod 與事件；探針需要時間，稍候可再查一次。預期新版 Pod 為 Running，但 READY 為 `0/1`，事件顯示 readiness probe 失敗，因為故障版的 `/readyz` 固定回 503。
+
+資源足夠時，舊健康 Pod 繼續服務。若想持續看變化，執行 `make m0-observe`，按 Ctrl+C 停止觀察。僅看到命令成功或等待逾時，都不足以確認故障原因。
+
+<details>
+<summary>展開：底層 kubectl 指令與詳細核對</summary>
 
 `v2-broken` 用來展示「程序還活著，但無法通過就緒檢查」：
 
@@ -310,9 +365,29 @@ kubectl --context kind-hugofleet-m0-demo -n hf-demo \
 
 本課使用 `maxSurge=1`、`maxUnavailable=0`；資源足夠時，舊健康版會繼續服務，壞版不會成為 Service 的就緒端點。**Running 表示程式正在執行；Ready 表示已通過接收流量的檢查。**
 
+</details>
+
 **下一步：**確認本步結果後，前往[11. 終端 A：恢復到 v1](#11-終端-a恢復到-v1)。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 
 ### 11. 終端 A：恢復到 v1
+
+確認故障後，由你指定換回健康的 v1：
+
+```bash
+make m0-restore
+```
+
+命令更新映像並等待部署完成，保留兩個副本。確認故障 Pod 退出、健康 Pod 就緒後，終端 B 按 Ctrl+C，再執行 `make m0-forward`。終端 C 驗證：
+
+```bash
+curl --fail http://127.0.0.1:18080/version
+curl --include --fail http://127.0.0.1:18080/readyz
+```
+
+預期為 v1、HTTP 200。再執行第 6 節價格請求，結果仍為 8000。這些操作修改叢集中的 Deployment，不會改寫本機 YAML。
+
+<details>
+<summary>展開：底層 kubectl 指令與詳細核對</summary>
 
 將映像改回 `v1`：
 
@@ -345,6 +420,8 @@ curl --include --fail http://127.0.0.1:18080/readyz
 預期版本恢復為 `v1`，就緒檢查回傳 HTTP `200`。再執行第 6 節的價格請求，最終金額應為 `8000`。
 
 這次只修改映像，先前設定的兩個副本仍會保留。`set image`、`scale` 改的是叢集內物件，不會修改本機 YAML。這是原生 Kubernetes 更新，沒有 M2 的 Release／Operation 履歷。
+
+</details>
 
 **下一步：**前往[整課驗證](#整課驗證與常見問題)，核對這一輪的結果。 若未符合預期，先到[操作排查](#操作遇到問題時)，處理後回到本步重試。
 

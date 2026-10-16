@@ -9,6 +9,12 @@
 | 第一次準備 Linux 工具 | `make tools` | 安裝成功，工具位於專案內 |
 | 確認可開始練習 | `make doctor` | 固定版本與 Docker Linux engine 檢查通過 |
 | 啟動或結束一課 | 該課的 `make mN-up`／`make mN-down` | 依階段 README 核對 |
+| M0／M1 更新與故障練習 | 各課的 `make mN-update-good`／`make mN-break`／`make mN-restore` | 按教學核對配置、Pod 與 HTTP |
+| M0／M1 查看狀態 | `make m0-status`／`make m1-status` | 自動選擇該課叢集，不需先 source |
+| M2 查詢／重啟 Hub | `make m2-status`／`make m2-hub-up` | 自動選 M2 環境，重啟沿用原 DB |
+| M3 查詢／轉送 | `make m3-status-a`／`make m3-forward-a`，查 B 換尾碼 b | 命令名稱明確指定 Worker |
+| M4／M5 轉送 A | `make m4-forward-a`／`make m5-forward-a` | 預設 team-a 的 pricing-api，localhost port 18080 |
+| M4／M5 查應用 | `make m4-workload-status`／`make m5-workload-status` | 顯示 A 的租戶工作負載、期望副本與事件 |
 | 查詢某課 Kubernetes | 依該課設定環境；M3～M5 先 source 該課 env.sh，再 kubectl | context 與 kubeconfig 指向該課 |
 | 只修改文件 | `make docs-check` | 檢查通過，不啟動叢集 |
 
@@ -23,6 +29,7 @@ Windows 從專案資料夾開 PowerShell，再執行 `wsl -d Ubuntu`；以下 Ba
 | [common.sh](common.sh) | 專案路徑、工具／快取環境、隔離 kubeconfig、固定叢集名稱、ownership 核對與共用函式 |
 | [kind.sh](kind.sh) | 共用 kind 建立／就緒與限定 ownership 的清理；依 HF_CLUSTER 選擇叢集與 API port |
 | [hf.sh](hf.sh) | Make 命令分派，以及跨階段 format／lint／build／驗證命令 |
+| [lesson-worker.sh](lesson-worker.sh) | M3～M5 的限定教學操作：指定 Worker、載入環境、ownership 核對、狀態／轉送／漂移／Agent 啟停 |
 | [bootstrap-tools.sh](bootstrap-tools.sh) | 安裝固定版本的 Go／kind／kubectl 至專案 .tools |
 | [cache-native.sh](cache-native.sh) | 在 WSL 原生 Linux filesystem 建立專案 Go 快取，保留來源檔案位置 |
 | [versions.env](versions.env) | 工具版本、SHA-256、Docker image digest 的唯一設定來源 |
