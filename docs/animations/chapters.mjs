@@ -1,0 +1,105 @@
+// Teaching scenarios, not observations from a running cluster. All amounts are cents.
+const quote = `curl --fail http://127.0.0.1:18080/quote -H 'Content-Type: application/json' --data '{"amount_cents":20000,"customer_tier":"vip","coupon_code":"SAVE100"}'`;
+const step = (title, text, action, expected, state = {}) => ({ title, text, action, expected, state });
+const shell = (where, code) => ({ where, code, kind: "shell" });
+const ui = (where, code) => ({ where, code, kind: "ui" });
+
+export const chapters = [
+  {
+    id: "m0", name: "讓服務真的跑起來", short: "基礎部署", english: "THE FIRST DEPLOYMENT",
+    intro: "從一個價格 API 開始。建置映像、部署到 kind，再用真正的 HTTP 請求確認結果。",
+    metaphor: "請求滑過處理台，映像卡匣裝入工作站；卡匣在位，仍要通過 readiness 才能接流量。",
+    legend: ["左側處理台 · pricing-api", "前方滑軌 · 操作／請求", "右側卡匣 · 工作負載"],
+    note: "M0 使用原生 Deployment／Service，尚無 Application CRD、Operator 或 Hub。",
+    setup: "先依根 README 準備 WSL2／Linux 工具並完成 make doctor。不同階段依各課教學結束上一課，再啟動下一課。",
+    stop: "make m0-down", tutorial: "../../stages/m0/README.md",
+    steps: [
+      step("建置並啟動 M0", "在專案根目錄啟動。入口建置三版映像、建立本課 kind，載入映像後部署 v1。", shell("終端 A · WSL2／Linux", "make m0-up\nmake m0-status"), "確認 Deployment rollout 完成；映像版本為 pricing-api:v1。", { focus: "a", pods: 1, phase: "v1 · Ready", metrics: ["版本|v1", "期望副本|1", "就緒副本|1", "管理入口|Kubernetes"] }),
+      step("轉送，再呼叫價格 API", "終端 B 保持轉送，終端 C 送出價格請求：20,000 × 90% − 10,000 = 8,000 分。", shell("終端 B → 保持執行；再於終端 C 呼叫", `# 終端 B\nmake m0-forward\n# 終端 C（另開終端）\n${quote}`), "final_amount_cents 應為 8000；轉送不會建立 Ingress。", { focus: "rail", pods: 1, phase: "HTTP /quote", metrics: ["原價（分）|20,000", "VIP 後（分）|18,000", "折抵（分）|10,000", "應付（分）|8,000"] }),
+      step("換成健康新版", "更新映像後等待 rollout。port-forward 可能仍連著舊 Pod，應停止後重建，再查 /version。", shell("終端 A", "make m0-update-good\nmake m0-status"), "重新轉送後，/version 應為 v2-good。", { focus: "a", pods: 1, phase: "v2-good · Ready", revision: 2, metrics: ["版本|v2-good", "readiness|200", "liveness|200", "就緒副本|1"] }),
+      step("增加為兩個副本", "這次由使用者變更原生 Deployment 的期望副本。它不是自動擴縮，也沒有 Operator 漂移修復。", shell("終端 A", "make m0-scale-two\nmake m0-status"), "最終 READY 為 2/2；副本增加不保證效能等比例成長。", { focus: "a", pods: 2, phase: "2 / 2 Ready", revision: 2, metrics: ["版本|v2-good", "期望副本|2", "就緒副本|2", "變更來源|使用者"] }),
+      step("部署 readiness 故障版", "v2-broken 程序仍存活，但 /readyz 一直回 503。舊版可能仍在服務，新 rollout 仍應判為失敗。", shell("終端 A", "make m0-break\nmake m0-status"), "觀察 ProgressDeadlineExceeded；不可把舊 Pod 可用當成新版成功。", { focus: "a", pods: 2, broken: true, phase: "readiness 503", revision: 3, metrics: ["目標版本|v2-broken", "readiness|503", "liveness|200", "新版 rollout|失敗"] }),
+      step("恢復 v1 並再次確認", "恢復健康映像。等 rollout 完成後，重建轉送，重新查版本與價格，最後依教學結束環境。", shell("終端 A", "make m0-restore\nmake m0-status"), "/version 為 v1，價格仍為 8000 分；完成後可執行 make m0-down。", { focus: "a", pods: 2, phase: "v1 · Recovered", metrics: ["版本|v1", "readiness|200", "價格（分）|8,000", "恢復方式|更新 Deployment"] }),
+    ],
+  },
+  {
+    id: "m1", name: "讓期望狀態持續成立", short: "Operator", english: "THE RECONCILE LOOP",
+    intro: "把配置交給 Application。Operator 持續比對與修復，讓實際狀態回到你提交的期望。",
+    metaphor: "左側模板架保存期望，右側工作站呈現實際；巡檢滑塊沿導軌移動，補回缺少的卡匣。",
+    legend: ["左側模板架 · Application CR", "巡檢滑塊 · Operator", "右側卡匣 · Deployment／Pods"],
+    note: "Operator 修復的是受管理資源。Pod 替換由 Kubernetes 控制器執行；此課還沒有 Hub 版本履歷。",
+    setup: "先結束 M0，再啟動獨立的 M1 教學環境。所有命令在專案根目錄執行。", stop: "make m1-down", tutorial: "../../stages/m1/README.md",
+    steps: [
+      step("提交 Application", "M1 入口安裝 CRD／Operator 並提交範例 Application；Operator 由 CR 建立 Deployment 和 Service。", shell("終端 A", "make m1-up\nmake m1-status"), "先確認 Application Conditions，再確認真實 Deployment／Pods 就緒。", { focus: "console", pods: 1, desired: 1, phase: "Application → workload", metrics: ["期望副本|1", "就緒副本|1", "意圖來源|Application", "維護者|Operator"] }),
+      step("在 CR 更新映像與副本", "使用教學命令將 Application 更新為健康新版、兩副本；Operator 負責讓底層資源收斂。", shell("終端 A", "make m1-update-good\nmake m1-status"), "目標映像為 v2-good，期望副本與就緒副本最終都為 2。", { focus: "console", pods: 2, desired: 2, revision: 2, phase: "Desired = observed", metrics: ["目標版本|v2-good", "期望副本|2", "就緒副本|2", "CR revision|2"] }),
+      step("手動製造副本漂移", "只把底層 Deployment 改成 1；Application 仍要求 2。圖中的短暫差異用來放慢解說，實際修復可能更快。", shell("終端 A", "make m1-drift\nmake m1-observe"), "CR 的 replicas 不變；Operator 偵測 Deployment 與期望配置不一致。", { focus: "a", pods: 1, desired: 2, revision: 2, phase: "Drift detected", metrics: ["CR 期望副本|2", "短暫實際副本|1", "CR revision|2", "差異|少一個副本"] }),
+      step("觀察自動修復", "Operator 重寫 Deployment 的期望配置，再由 Kubernetes 建回副本。觀察完成後以 Ctrl+C 結束 watch。", shell("終端 A", "make m1-status"), "最終 Deployment READY 為 2/2；修復漂移不需要使用者再提交新 revision。", { focus: "a", pods: 2, desired: 2, revision: 2, scan: true, phase: "Reconciled · 2 / 2", metrics: ["CR 期望副本|2", "就緒副本|2", "CR revision|2", "修復|自動收斂"] }),
+      step("辨識故障，再提交恢復", "先觀察壞版 readiness 失敗與 Condition 原因，再用新的 CR revision 恢復 v1；確認實際 rollout 後才算恢復。", shell("終端 A · 分兩次執行，先觀察故障", "make m1-break\nmake m1-status\n# 確認故障原因後，再執行\nmake m1-restore\nmake m1-status"), "舊 Pod 可用不等於新版本成功；恢復要核對映像、generation 與 readiness。", { focus: "console", pods: 2, desired: 2, revision: 4, phase: "New revision · v1", metrics: ["恢復目標|v1", "期望副本|2", "CR revision|4", "判定依據|實際 rollout"] }),
+      step("刪除 CR，核對相依清理", "刪除 Application 後，由 ownerReference 與 Kubernetes GC 清理受管理的 Deployment／Service。", shell("終端 A", "make m1-delete"), "命令會等待受管理資源清理並列出剩餘資源；Operator 程序本身不等於被刪除。", { focus: "a", pods: 0, desired: 0, deleted: true, phase: "Owner → garbage collection", metrics: ["Application|已刪除", "Deployment|GC 清理", "Service|GC 清理", "Operator|持續執行"] }),
+    ],
+  },
+  {
+    id: "m2", name: "每次發布，都留下履歷", short: "Hub 與回滾", english: "RELEASES THAT REMEMBER",
+    intro: "從 Hub 表單提交部署。Release 保存配置，Operation 追蹤結果，SQLite 留住成功與失敗的歷史。",
+    metaphor: "左側控制台提交卡片，抽屜保留不可變版本；回滾取出舊配置，另裝一張新編號卡匣。",
+    legend: ["左側控制台 · Hub UI／API", "卡片抽屜 · SQLite 履歷", "右側工作站 · 單叢集"],
+    note: "M2 是單叢集 dev-only 模式，Hub 使用受限 kubeconfig。202 只表示接受；回滾一定新增 revision。",
+    setup: "結束 M1 後啟動 M2。up 會在前景執行 Hub，請保留終端 A；本課 UI 不需 OIDC 登入。", stop: "make m2-down", tutorial: "../../stages/m2/README.md",
+    steps: [
+      step("啟動 Hub，打開表單", "啟動後保留前景 Hub 日誌。瀏覽器開啟精確的本機網址，由 UI 建立 pricing-api。", shell("終端 A → 瀏覽器", "make m2-up\n# 瀏覽器開啟 http://127.0.0.1:18090"), "啟動完成時已有 Operator，但尚未建立業務應用。", { focus: "console", pods: 0, desired: 0, phase: "Hub ready", metrics: ["管理入口|Hub UI", "Worker|單叢集", "業務應用|尚未建立", "認證模式|本機開發"] }),
+      step("提交第一次部署", "填入 v1、port 8080、replicas 1，其餘使用預設。Hub 交易建立 Application、Release rev 1 與 Operation。", ui("瀏覽器 · 建立應用", "名稱  pricing-api\nImage  pricing-api:v1\nPort   8080\nReplicas  1\n→ 提交部署"), "先顯示 QUEUED／DEPLOYING；HTTP 202 還不是部署成功。", { focus: "rail", pods: 0, desired: 1, revision: 1, phase: "202 · Accepted", metrics: ["desired revision|1", "Operation|QUEUED", "Application|DEPLOYING", "Release|PENDING"] }),
+      step("等待 Ready，確認真實服務", "Hub Runner 提交 CR，Operator 維持資源。必須等觀測到目標版本 rollout 完成，再轉送並呼叫服務。", shell("終端 B／C", `# 終端 B 保持執行\nmake m2-forward\n# 終端 C\n${quote}`), "Operation SUCCEEDED、Application READY，真實價格結果為 8000 分。", { focus: "a", pods: 1, desired: 1, revision: 1, last: 1, phase: "Rollout verified", metrics: ["desired / applied|1 / 1", "last successful|1", "Operation|SUCCEEDED", "Application|READY"] }),
+      step("發布健康新版", "從應用詳情提交 v2-good、兩副本。每次配置變更保存完整快照，且同一應用只接受一個進行中的變更。", ui("瀏覽器 · 發布版本", "Image  pricing-api:v2-good\nReplicas  2\n→ 提交並等 SUCCEEDED／READY"), "這段範例形成 rev 2；版本歷史保留 rev 1，衝突請求會回 409。", { focus: "ledger", pods: 2, desired: 2, revision: 2, last: 2, phase: "Revision 2 · ACTIVE", metrics: ["desired / applied|2 / 2", "last successful|2", "就緒副本|2", "舊版履歷|保留"] }),
+      step("壞版失敗，保留成功版本", "提交 v2-broken，等到失敗或逾時，讀取原因。新 CR 已寫入不代表 rollout 成功。", ui("瀏覽器 · 發布故障版", "Image  pricing-api:v2-broken\nReplicas  2\n→ 讀取 Operation 原因與事件"), "範例 rev 3 失敗：desired=3、applied=3、last successful=2。", { focus: "a", pods: 2, desired: 2, revision: 3, last: 2, broken: true, phase: "Revision 3 · FAILED", metrics: ["desired / applied|3 / 3", "last successful|2", "Release 3|FAILED", "Operation|FAILED／TIMED_OUT"] }),
+      step("確認回滾，產生新 revision", "按回滾，選擇成功的 v1 快照並確認。Hub 以那份配置建立 rev 4，失敗的 rev 3 不會被刪除或改寫。", ui("瀏覽器 · 回滾確認頁", "回滾來源  revision 1 · v1\n→ 確認回滾\n→ 等待新的 Operation SUCCEEDED"), "範例 rev 4 成功後，desired／applied／last successful 都為 4；副本恢復來源快照的 1。", { focus: "ledger", pods: 1, desired: 1, revision: 4, last: 4, phase: "Revision 4 · READY", metrics: ["desired / applied|4 / 4", "last successful|4", "回滾來源|revision 1", "Release 3|仍為 FAILED"] }),
+    ],
+  },
+  {
+    id: "m3", name: "兩個叢集，各自穩定運作", short: "多叢集通道", english: "CONNECTED, NOT DEPENDENT",
+    intro: "Worker Agent 主動建立 mTLS 雙向通道。斷線影響遠端管理，當地 Operator 仍持續維持工作負載。",
+    metaphor: "兩座工作站各有巡檢器；A 的接合滑塊分離時，A 仍修復卡匣，B 的滑軌仍可運送新指令。",
+    legend: ["左側控制台 · Hub", "中間工作站 · Worker A", "右側工作站 · Worker B"],
+    note: "通道由 Agent → Hub 主動建立。Hub 不持有 Worker kubeconfig；ACK 不等於 rollout 成功。",
+    setup: "先依原階段教學 down，再 make m3-up。用 M3 教學在 A／B 建立 pricing-a／pricing-b，並把 A 更新到兩副本。M3 尚非 OIDC 模式。", stop: "make m3-down", tutorial: "../../stages/m3/README.md",
+    steps: [
+      step("部署到 A、B，核對連線", "在 UI 選不同 Worker 建立應用。每個 Agent 都由 Worker 主動連向 Hub，Hub 才能在同一條通道下送受限命令。", shell("終端 A · 準備完成後於 UI 建立應用", "make m3-up\nmake m3-status-a\nmake m3-status-b"), "準備好兩邊服務；A 兩副本，B 一副本，A／B 均 CONNECTED。", { focus: "console", pods: 2, bpods: 1, desired: 2, phase: "Agent → Hub · mTLS", metrics: ["Worker A|CONNECTED", "Worker B|CONNECTED", "A 就緒副本|2", "Hub Worker kubeconfig|無"] }),
+      step("停止 A 的通訊 Agent", "只停 Agent，價格 API 與 Operator 繼續執行。等待管理頁反映斷線與資料過期，再繼續。", shell("終端 A", "make m3-agent-stop-a"), "A DISCONNECTED／應用 UNKNOWN，保留最後觀測時間；新 A 變更會被 503 拒絕。", { focus: "link", pods: 2, bpods: 1, desired: 2, connected: false, phase: "A · DISCONNECTED", metrics: ["Worker A|DISCONNECTED", "A 管理頁現況|UNKNOWN", "A 當地副本|仍為 2", "新 A 變更|503 拒絕"] }),
+      step("A 離線時，B 繼續發布", "由 UI 把 pricing-b 更新為 v2-good、兩副本，等 B 真正 READY。A 的連線問題不應阻塞 B 的操作。", ui("瀏覽器 · pricing-b", "Worker  B\nImage   pricing-api:v2-good\nReplicas  2\n→ 提交並等待 SUCCEEDED／READY"), "B 更新成功；A 在管理頁仍為 UNKNOWN，不可把快取顯示成即時狀態。", { focus: "b", pods: 2, bpods: 2, desired: 2, connected: false, phase: "B · rollout complete", metrics: ["Worker A|DISCONNECTED", "Worker B|CONNECTED", "B 就緒副本|2", "B 目標版本|v2-good"] }),
+      step("對離線 A 製造漂移", "底層 Deployment 被改為 1，但 A 的 Application 仍要求 2。這個差異與 Hub 是否連線無關。", shell("終端 A", "make m3-drift-a\nmake m3-observe-a"), "在 Worker A 當地觀察修復；Hub 的 UNKNOWN 不能當成當地 Pod 已停止。", { focus: "a", pods: 1, bpods: 2, desired: 2, connected: false, phase: "A local · drift", metrics: ["A CR 期望副本|2", "A 短暫實際副本|1", "A Agent|停止", "A Operator|持續執行"] }),
+      step("Operator 在當地修回兩副本", "Operator 監看當地 CR／Deployment，修回期望配置。Kubernetes 補齊副本；不必先恢復 Hub 通道。", shell("終端 A · Ctrl+C 結束 watch 後", "make m3-status-a"), "Worker A 當地 READY 最終為 2/2；管理頁仍須等待 Agent 重連才能取得新觀測。", { focus: "a", pods: 2, bpods: 2, desired: 2, connected: false, scan: true, phase: "A local · repaired offline", metrics: ["A 當地就緒副本|2", "A Agent|仍停止", "A Hub 觀測|仍為 UNKNOWN", "修復來源|當地 Operator"] }),
+      step("恢復 Agent，重新核對狀態", "先等 Agent Pod 就緒，再等 Hub CONNECTED。重連會核對 ledger／CR 與版本，避免過期命令覆蓋新狀態。", shell("終端 A", "make m3-agent-start-a\nmake m3-status-a"), "重新同步真實觀測；這次重連不新增應用 revision，也不重建同名 CR。", { focus: "link", pods: 2, bpods: 2, desired: 2, phase: "mTLS · reconnected", metrics: ["Worker A|CONNECTED", "A 應用|READY", "A 就緒副本|2", "新 deployment revision|不因重連增加"] }),
+    ],
+  },
+  {
+    id: "m4", name: "讓每個操作有身分與邊界", short: "身分與租戶", english: "IDENTITY MEETS POLICY",
+    intro: "登入只是起點。Hub 的角色授權、Worker 的資源配額與租戶隔離，一起約束誰能操作什麼。",
+    metaphor: "身分卡先經門禁，通過才送上滑軌；權限拒絕或配額不符時，閘門擋住對應操作。",
+    legend: ["左側讀卡台 · OIDC／Hub RBAC", "滑軌閘門 · 授權與 Admission", "工作站 · 租戶工作負載"],
+    note: "Hub 信任已驗證身分與 DB membership，OIDC groups 不會直接授予平台角色。NetworkPolicy 封包阻擋須另外驗證；B 不作相同保證。",
+    setup: "make m4-up 後，依教學在本機取得本輪帳號並登入。帳號、密碼、OAuth query、私鑰與 session 不放入動畫或截圖。", stop: "make m4-down", tutorial: "../../stages/m4/README.md",
+    steps: [
+      step("啟動，完成 OIDC 登入", "M4 建立雙 Worker 與本機 Dex。於本地取得本輪帳號，用 admin 登入管理頁；這裡不展示任何帳密。", shell("終端 A → 瀏覽器", "make m4-up\n# 瀏覽器開啟 http://127.0.0.1:18094/login"), "完成 Code／PKCE 等驗證，建立 session；身分驗證成功仍不等於取得所有租戶角色。", { focus: "console", pods: 0, bpods: 0, desired: 0, gate: true, phase: "OIDC · authenticated", metrics: ["身分來源|OIDC", "角色來源|Hub DB", "Worker A／B|CONNECTED", "租戶角色|尚待授予"] }),
+      step("啟用租戶，授予成員角色", "admin 選 team-a、A／B、owner-a 啟用已 bootstrap 的 profile。owner-a 再授予 developer-a 與 viewer-a 對應角色。", ui("瀏覽器 · admin → owner-a", "啟用 team-a 的 A／B profile\n→ 核對 namespace／receipt／Quota\n→ owner-a 授予 Developer 與 Viewer"), "Hub 會向 Agent 核對 Worker 證據，不能只靠新增 DB row 假裝啟用成功。", { focus: "gate", pods: 0, bpods: 0, desired: 0, gate: true, phase: "Tenant profile · verified", metrics: ["租戶|team-a", "Developer|可部署", "Viewer|唯讀", "Worker profile|實際核對"] }),
+      step("Developer 在自己的租戶部署", "developer-a 登入 team-a，提交 v1。先看到待處理狀態，再等待真實 Worker 回報 rollout 完成。", ui("瀏覽器 · developer-a", "租戶 team-a · Cluster A\nImage pricing-api:v1 · Replicas 1\nPort 8080 · 其餘使用預設\n→ 提交並等 SUCCEEDED／READY"), "可執行 make m4-forward-a，再於另一終端呼叫價格 API，應得 8000 分。", { focus: "rail", pods: 1, bpods: 0, desired: 1, gate: true, phase: "Developer · allowed", metrics: ["操作者|Developer", "目標租戶|team-a", "授權結果|允許", "Application|READY"] }),
+      step("Viewer 看得到，但不能變更", "viewer-a 可讀取 team-a 狀態與版本，介面不提供部署／回滾／刪除表單；後端同樣拒絕自行構造的變更請求。", ui("瀏覽器 · viewer-a", "開啟 team-a 應用詳情\n→ 查看狀態、配置與版本履歷\n→ 核對沒有變更控制"), "按鈕隱藏只是介面行為；伺服器授權才是拒絕變更的依據。", { focus: "gate", pods: 1, desired: 1, gate: false, phase: "Viewer · read only", metrics: ["操作者|Viewer", "讀取 team-a|允許", "變更 team-a|拒絕", "既有服務|持續執行"] }),
+      step("跨租戶讀取被拒絕", "以 developer-a 開啟 team-b。擁有 team-a 的角色不代表擁有 team-b 權限；拒絕結果仍保留 request_id。", ui("瀏覽器 · developer-a", "開啟 /tenants/team-b\n→ 讀取拒絕原因與 request_id"), "預期 403／PERMISSION_DENIED，不暴露其他租戶的應用內容。", { focus: "gate", pods: 1, desired: 1, gate: false, phase: "403 · PERMISSION_DENIED", metrics: ["操作者|team-a Developer", "目標租戶|team-b", "HTTP|403", "資料揭露|拒絕"] }),
+      step("配額由 Kubernetes 強制執行", "超出配額時，Kubernetes Admission 拒絕建立所需 Pod，原因再回報到應用狀態。這與 Hub RBAC 是不同層的限制。", shell("獨立 E2E · 需先依教學釋放相同 port", "make test-e2e-m4"), "真實 E2E 核對 CPU／memory Admission 與 A Worker 封包隔離。動畫不代替這些驗收。", { focus: "a", pods: 1, desired: 2, gate: false, broken: true, phase: "Admission · quota denied", metrics: ["限制來源|ResourceQuota", "CPU／Memory|Admission 拒絕", "NetworkPolicy|A 需封包驗證", "既有 Pod|不因示意而刪除"] }),
+    ],
+  },
+  {
+    id: "m5", name: "把一次部署，追到最後", short: "觀測與交付", english: "FOLLOW THE OPERATION",
+    intro: "用 Dashboard 操作，用 request／operation 關聯觀測。把故障、回滾與交付串成可核對的完整故事。",
+    metaphor: "控制台派出操作卡，右側工作站執行；收據抽屜保存履歷，觀測窗讀取同一次操作的訊號。",
+    legend: ["控制台 · Dashboard", "收據抽屜 · Release／Operation", "工作站 · Agent／Operator"],
+    note: "Hub /traces 只保留當前 Hub 程序的 spans。跨 Hub／Agent／Operator trace 需另外收集日誌；metrics 重啟歸零，SQLite 履歷仍保留。",
+    setup: "先依原課 down，再 make m5-up。依教學完成 admin 啟用租戶與 owner-a 登入；所有後續操作沿用同一份 state。", stop: "make m5-down", tutorial: "../../stages/m5/README.md",
+    steps: [
+      step("開啟 Dashboard 與租戶", "M5 入口準備雙 Worker、Dex、Dashboard 與 Helm 元件。admin 啟用租戶與 Owner 後，再用 owner-a 操作應用。", shell("終端 A → 瀏覽器", "make m5-up\n# 瀏覽器開啟 http://127.0.0.1:18095/login"), "Agent 的 Pod Ready 與 Hub CONNECTED 要分別確認；啟用租戶前沒有業務應用。", { focus: "console", pods: 0, bpods: 0, desired: 0, phase: "Dashboard · connected", metrics: ["Worker A|CONNECTED", "Worker B|CONNECTED", "管理 UI|Dashboard", "業務應用|尚未建立"] }),
+      step("發版後，讀取真正的觀測", "以 owner-a 在 team-a／A 建立 pricing-api:v1，等 rev 1 成功，再發布 v2-good、兩副本作為 rev 2。", ui("瀏覽器 · owner-a", "建立 v1 · Replicas 1\n→ 等 SUCCEEDED／READY\n發布 v2-good · Replicas 2\n→ 等 SUCCEEDED／READY"), "詳情同時顯示 desired、applied、last successful，以及 generation／Conditions／最後觀測。", { focus: "a", pods: 2, bpods: 0, desired: 2, revision: 2, last: 2, phase: "Revision 2 · READY", metrics: ["desired / applied|2 / 2", "last successful|2", "就緒副本|2", "狀態來源|Worker 回報"] }),
+      step("從故障原因回到操作紀錄", "發布 v2-broken 成為 rev 3。等待實際失敗／逾時，從詳情讀取 reason、request_id 與操作事件。", ui("瀏覽器 · 應用詳情", "發布 pricing-api:v2-broken\n→ 等待 FAILED／TIMED_OUT\n→ 查看 reason、request_id 與事件"), "保留 rev 2 成功資訊；不能因還有舊 Pod 回應就把 rev 3 標為成功。", { focus: "ledger", pods: 2, desired: 2, revision: 3, last: 2, broken: true, phase: "Revision 3 · FAILED", metrics: ["目標版本|v2-broken", "last successful|2", "Release 3|FAILED", "關聯欄位|request／operation"] }),
+      step("回滾後，核對新版本與服務", "在確認頁選已知成功的 rev 1／v1，建立 rev 4。等待新操作成功，再重建轉送並驗證版本、價格。", shell("瀏覽器先完成回滾，再使用終端 B／C", "# 終端 B 保持執行\nmake m5-forward-a\n# 終端 C\ncurl --fail http://127.0.0.1:18080/version"), "範例 rev 4 READY、映像 v1、來源快照一副本；rev 3 仍 FAILED。", { focus: "ledger", pods: 1, desired: 1, revision: 4, last: 4, phase: "Revision 4 · recovered", metrics: ["desired / applied|4 / 4", "last successful|4", "回滾來源|revision 1", "Release 3|仍為 FAILED"] }),
+      step("admin 查看指標與 Hub spans", "換 admin 登入，開 metrics／traces，以 request 或 operation 對照剛才的操作。Owner／Viewer 不能存取全域 telemetry。", ui("瀏覽器 · admin", "開啟 /metrics\n開啟 /traces\n→ 用 operation／request 關聯查找"), "metrics 是目前程序的數值；Hub viewer 不會自動收齊 Agent／Operator spans。", { focus: "console", pods: 1, desired: 1, revision: 4, last: 4, phase: "Observe · correlate", metrics: ["/metrics 權限|Platform Admin", "/traces 範圍|當前 Hub", "跨程序 trace|另收集日誌", "持久履歷|SQLite"] }),
+      step("把交付與真實畫面接起來", "依 Helm 教學檢查渲染與 lifecycle。也可開啟既有 M5 操作影片、實際回滾 trace，對照這裡的流程示意。", shell("終端 A · 本機 Chart 驗證", "make m5-chart-test"), "Chart 渲染不等於安裝 lifecycle 驗收；完整流程見 M5 教學及驗證總覽。", { focus: "rail", pods: 1, bpods: 0, desired: 1, revision: 4, last: 4, phase: "Explain → operate → verify", metrics: ["安裝入口|Helm", "Chart render|獨立檢查", "真實操作素材|M5 影片／trace", "驗收依據|命令與結果"] }),
+    ],
+  },
+];

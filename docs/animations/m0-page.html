@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HugoFleet M0 · 從第一個請求到安全恢復</title><style>/* STYLE */</style></head>
+<body>
+<header><a href="index.html" class="brand">H<span>HugoFleet / 動畫教室</span></a><div><a href="../../stages/m0/README.md">M0 實作教學 ↗</a><button id="theme" aria-label="切換深淺色">深色</button></div></header>
+<main>
+  <nav class="course-nav" aria-label="章節"><a href="m0.html" aria-current="page">M0</a><a href="m1.html">M1</a><a href="m2.html">M2</a><a href="m3.html">M3</a><a href="m4.html">M4</a><a href="m5.html">M5</a></nav>
+  <div class="intro"><div><p class="eyebrow">M0 / KUBERNETES BASICS</p><h1>讓一個 API，穩定跑起來。</h1><p>從部署、換版到故障恢復，跟著同一組 Pod 看懂每個變化。</p></div><span class="intro-note">12 段分鏡 · 可逐段重播<br>流程示意，非即時叢集</span></div>
+  <div class="layout">
+    <aside class="navigation"><p class="eyebrow">這次的旅程</p><nav id="steps" aria-label="M0 分鏡"></nav><a href="m1.html" class="other">下一章：M1 Operator →</a></aside>
+    <section class="lesson" aria-label="M0 動畫播放器" tabindex="0">
+      <div class="lesson-title"><span id="number">01 / 12</span><div><h2 id="title"></h2><p id="question"></p></div></div>
+      <div class="stage" id="stage">
+        <div class="stage-top"><span id="scene-label">用途 / 價格試算</span><span>等待時間已縮短</span></div>
+        <div id="quote-scene" class="special-scene">
+          <div class="scenario-label">一位 VIP 顧客，想知道折扣後的價格。</div>
+          <div class="quote-flow"><article><span class="eyebrow">顧客送出</span><strong>200<span> 元</span></strong><p>VIP 會員<br>SAVE100 折價券</p></article><span class="flow-arrow">→</span><article class="api"><span class="eyebrow">價格 API</span><strong id="math">等待請求</strong><p id="math-detail">POST /quote</p></article><span class="flow-arrow">→</span><article id="answer"><span class="eyebrow">回傳結果</span><strong>80<span> 元</span></strong><p>final_amount_cents<br><b>8000</b></p></article></div>
+          <div class="scene-takeaway">接下來，把這個 API 放進 Kubernetes。</div>
+        </div>
+        <div id="build-scene" class="special-scene" hidden>
+          <div class="scenario-label">先準備程式的包裝，再讓節點執行。</div>
+          <div class="build-flow"><article><span class="eyebrow">我的電腦</span><h3>Go 原始碼</h3><p>＋ Dockerfile</p><code>docker build</code></article><span class="flow-arrow">→</span><article id="images"><span class="eyebrow">三個映像</span><div class="image-tag">v1 <small>健康版</small></div><div class="image-tag">v2-good <small>健康新版</small></div><div class="image-tag amber">v2-broken <small>就緒失敗版</small></div></article><span class="flow-arrow">→</span><article id="node-cache"><span class="eyebrow">kind 單節點</span><h3>節點映像庫</h3><p id="cache-result">等待載入</p><b>業務 Pod：0</b></article></div>
+          <div class="scene-takeaway">映像是包裝；Pod 是執行中的那一份。</div>
+        </div>
+        <div id="cluster-scene" hidden>
+          <div class="zones">
+            <section class="client-zone zone"><div class="zone-label">01 / 我的電腦</div><article id="client" class="node"><span class="node-icon">⌘</span><h3>終端機</h3><p id="client-action">提交設定</p><code>localhost:18080</code><div id="forward-status" class="status-line">轉送尚未連線</div></article><div id="response" class="response">尚無 HTTP 回應</div><p class="local-note">虛線：控制／探測<br>實線：本機轉送請求</p></section>
+            <section class="control-zone zone"><div class="zone-label">02 / Kubernetes 控制區</div><article id="deployment" class="node"><span class="eyebrow">API SERVER 接收期望設定</span><h3>Deployment</h3><div class="desired"><span>映像 <b id="desired-image">v1</b></span><span>副本 <b id="desired-count">1</b></span></div><small>Deployment 控制器 ↓</small></article><article id="rs" class="node compact"><h3>ReplicaSet</h3><div id="rs-list"></div><small>ReplicaSet 控制器 → 建立／縮減 Pod</small></article><article id="service" class="node compact"><h3>Service <small>ClusterIP</small></h3><span class="muted">可用端點（Ready）</span><div id="endpoints"></div></article></section>
+            <section class="worker-zone zone"><div class="zone-label">03 / kind 節點 · 執行 API</div><article id="kubelet" class="kubelet"><strong>kubelet</strong><span>啟動容器 · 存活與就緒探測</span></article><div id="pods" class="pods" aria-label="Pod 生命週期"></div><div id="probe" class="probe">探針結果會顯示在這裡</div><div class="strategy">更新策略 <b>額外 +1</b><b>可用數不減少</b></div></section>
+          </div>
+          <svg id="connections" aria-hidden="true"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="currentColor"/></marker></defs><path id="route" marker-end="url(#arrow)"/><circle id="packet" r="5"/></svg>
+          <div class="cluster-summary"><span>目標與現況</span><strong id="observed"></strong><span id="counts"></span></div>
+        </div>
+      </div>
+      <div class="narration" aria-live="polite" aria-atomic="true"><div class="beat-heading"><span id="beat-label"></span><strong id="event-title"></strong></div><p id="why"></p><div id="beats" aria-label="本步分鏡"></div></div>
+      <div class="controls"><div class="progress-row"><span id="time"></span><label class="sr-only" for="seek">本步時間軸</label><input id="seek" type="range" min="0" max="1" step="0.01" value="0"><span id="end-time"></span></div><div class="control-row"><button id="previous" aria-label="上一步">←</button><button id="play" class="primary">播放這一步</button><button id="replay" aria-label="重播這一步">↺</button><button id="next">下一步 →</button><span class="spacer"></span><label><input type="checkbox" id="continuous">連續播放</label><select id="speed" aria-label="播放速度"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option></select></div><p id="play-hint">每一步結束會停住，確認看懂後再前進。Space 播放／暫停 · ← → 切換步驟</p></div>
+      <div class="aftercare" id="aftercare" hidden><strong>可選收尾：刪除練習叢集</strong><p>make m0-down 會移除 M0 kind 叢集。這個按鈕只切換示意，不執行命令。</p><button id="cleanup">查看清理後的畫面</button><p id="cleanup-result" hidden>叢集已從示意圖移除。Pod、Deployment、Service 隨叢集消失；本機原始碼與映像仍保留。</p></div>
+      <details class="commands"><summary>對照這一步的實作命令</summary><pre id="command"></pre><a href="../../stages/m0/README.md">終端分工、準備與完整驗證，請依 M0 教學操作 ↗</a></details>
+      <p class="footnote">Pod A～F 是教學識別名稱。呈現資源足夠時的一種執行時序；實際排程、探針與終止時間會不同。M0 使用原生 Deployment／Service。</p>
+    </section>
+  </div>
+</main>
+<script>/* DATA */
+/* SCRIPT */</script>
+</body></html>

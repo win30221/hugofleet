@@ -8,6 +8,8 @@ HugoFleet 是以 Go、Kubernetes Operator、SQLite 與 Go template UI 製作的�
 
 **本頁環境準備 → M0 部署 API → M1 Operator → M2 Hub → M3 雙叢集 → M4 租戶權限 → M5 Dashboard 與觀測**
 
+想先看懂流程，可開啟 [M0～M5 動畫教室](docs/animations/index.html)。下載專案後，用瀏覽器開啟 HTML，即可逐步或連續播放各章。
+
 1. 先完成下方[首次準備環境](#首次準備環境)，直到 `make doctor` 成功。
 2. 接著[開始 M0](stages/m0/README.md)，按終端分工逐步操作。
 3. 每課完成後，依該課的「完成這一課後去哪裡」清理環境，再進下一課。
@@ -131,6 +133,8 @@ flowchart LR
 ```
 
 M2 使用受限 kubeconfig 管理單叢集；M3 起 Hub 不持有 Worker kubeconfig。M4 加入 OIDC 與租戶安全，M5 加入 Dashboard、trace／metrics 與 Helm。Worker 回報真實狀態，SQLite 保存意圖與操作履歷。
+
+[M0～M5 動畫教室](docs/animations/index.html) 用逐步架構分鏡說明 API 部署、Operator、發布履歷、多叢集、授權與觀測。每步依序呈現操作、系統反應與結果，支援暫停、重播與離線播放。動畫數值不是即時叢集觀測，操作指引連回完整教學；使用方式與來源見 [動畫說明](docs/animations/README.md)。
 
 [M5 播放頁](docs/media/m5-demo.html)／[MP4](docs/media/m5-demo.mp4) 展示部署、故障、修復、回滾與多叢集操作。影片由 19 張真實瀏覽器操作截圖按順序剪輯，並非連續錄影；可對照[實際回滾 trace](docs/media/m5-rollback-trace.html) 與 [M5 驗收範圍](docs/m5-validation.md)。
 

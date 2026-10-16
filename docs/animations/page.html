@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="HugoFleet M0 到 M5 的六章互動操作動畫。用部署工作台理解部署、Operator、版本回滾、多叢集、租戶權限與觀測。">
+  <title>HugoFleet · 看見部署如何運作</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23173730'/%3E%3Cpath d='M12 10v20m16-20v20M12 20h16' stroke='%23d4f6c0' stroke-width='4'/%3E%3C/svg%3E">
+  <style>/* ANATOMY_CSS */
+/* PLAYER_CSS */</style>
+</head>
+<body data-theme="light">
+  <a class="skip" href="#player">跳到動畫播放器</a>
+  <header class="topbar">
+    <a class="brand" href="../../README.md"><span class="brand-mark" aria-hidden="true">H</span><strong>HugoFleet</strong><span class="brand-divider">/</span><span class="brand-caption">部署工作台</span></a>
+    <div class="top-actions"><span class="offline"><i></i>離線可播放</span><button id="theme" class="text-button" type="button" aria-label="切換深色模式">深色模式 <span aria-hidden="true">◐</span></button><a class="text-link" href="../../stages/README.md">操作教學 <span aria-hidden="true">↗</span></a></div>
+  </header>
+  <div class="workspace">
+    <aside class="chapters" aria-label="章節導覽">
+      <p class="small-label">THE LEARNING PATH</p>
+      <p class="nav-intro">從第一個 Pod，<br>到多叢集交付。</p>
+      <nav id="chapters" aria-label="選擇動畫章節"><!-- CHAPTER_NAV --></nav>
+      <div class="nav-foot"><span class="nav-dot"></span><span>06 CHAPTERS<br><b id="total-duration">06:00</b> 全章播放</span></div>
+    </aside>
+    <main id="content">
+      <div class="heading-meta"><span class="eyebrow" id="chapter-eyebrow">01 / 06 · THE FIRST DEPLOYMENT</span><span class="type-tag">INTERACTIVE EXPLAINER</span></div>
+      <div class="chapter-heading"><div><h1 id="chapter-title">讓服務真的跑起來</h1><p id="chapter-intro">從一個價格 API 開始。建置映像、部署到 kind，再用真正的 HTTP 請求確認結果。</p></div><span class="chapter-number" id="chapter-number" aria-hidden="true">00</span></div>
+      <section class="learning-goal" aria-label="本章用途"><span class="small-label">這一章解決什麼問題</span><h2 id="purpose"></h2><p id="problem"></p><p class="responsibility" id="responsibility"></p><strong id="question"></strong></section>
+      <div class="demo-grid">
+        <section id="player" class="player" aria-label="互動動畫播放器" tabindex="0">
+          <div class="machine-card iso iso-plate" data-theme="light">
+            <div class="figure-top"><span id="figure-number">FIG. 01</span><span class="scene-badge">流程示意 <span aria-hidden="true">·</span> 非即時狀態</span><span class="figure-kind">ISOMETRIC / SVG</span></div>
+            <div id="machine" class="machine"><!-- FIRST_MACHINE --></div>
+            <div class="figure-bottom"><span id="figure-subject">DEPLOYMENT BENCH</span><span id="phase" data-readout>v1 · Ready</span></div>
+          </div>
+          <div id="legend" class="legend" aria-label="機構與元件對照"></div>
+          <div class="event-caption"><span class="small-label">正在發生的變化 · 等待時間已縮短</span><strong id="event-title"></strong><p id="event-why"></p><div id="events" class="event-controls" aria-label="選擇機制變化"></div></div>
+          <div class="transport-controls">
+            <div class="seek-row"><span id="elapsed" class="time">00:00</span><label class="sr-only" for="seek">本章播放進度</label><input id="seek" type="range" min="0" max="60" step="0.05" value="0" aria-valuetext="第 1 步，建置並啟動 M0"><span id="duration" class="time">01:00</span></div>
+            <div class="buttons-row"><div class="playback-buttons"><button id="previous" class="icon-button" type="button" aria-label="上一步">←</button><button id="play" class="play-button" type="button" aria-label="暫停動畫"><span id="play-icon" aria-hidden="true">Ⅱ</span><span id="play-text">暫停</span></button><button id="next" class="icon-button" type="button" aria-label="下一步">→</button><button id="restart" class="icon-button restart" type="button" aria-label="重播本章">↺</button></div><div class="playback-options"><label class="continue"><input id="continuous" type="checkbox" checked>連播六章</label><label class="sr-only" for="speed">播放速度</label><select id="speed" aria-label="播放速度"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div></div>
+          </div>
+          <div class="keyboard-hint"><span><kbd>Space</kbd> 播放／暫停 <span class="hint-gap"><kbd>←</kbd> <kbd>→</kbd> 逐步</span></span><button id="motion" type="button" class="text-button">減少動態</button></div>
+        </section>
+        <aside class="story" aria-label="本章步驟">
+          <div class="story-heading"><span class="small-label">操作順序</span><span id="step-counter" class="mono">01 / 06</span></div>
+          <ol id="steps"></ol>
+          <a id="tutorial" class="tutorial-link" href="../../stages/m0/README.md">跟著完整教學實作 <span aria-hidden="true">↗</span></a>
+        </aside>
+      </div>
+      <section class="cluster-inspector" aria-label="示意工作負載與控制層"><div class="inspector-heading"><span class="small-label">實際機制剖面 · 教學快照</span><span id="replica-contract"></span></div><div class="control-facts" id="control-facts"></div><div id="pod-lineage" class="pod-lineage"></div><p id="pod-conclusion"></p><small>Pod ID／ReplicaSet 分組為示意名稱；省略排程耗時與 Terminating 過程。表格區分 Pod phase、readiness 與 rollout 結果。</small></section>
+      <section id="readouts" class="readouts" aria-label="目前步驟的示意數值"></section>
+      <div class="detail-grid">
+        <section class="step-copy" aria-labelledby="step-title"><span class="small-label" id="step-label">STEP 01</span><h2 id="step-title">建置並啟動 M0</h2><p id="step-description"></p><div class="expected"><span class="expected-mark" aria-hidden="true">✓</span><div><strong>實作時確認</strong><p id="expected"></p></div></div></section>
+        <section class="action-card" aria-labelledby="action-location"><div class="action-heading"><span id="action-kind" class="code-label">TERMINAL</span><button id="copy" class="copy-button" type="button">複製</button></div><h3 id="action-location">終端 A · WSL2／Linux</h3><pre><code id="action-code"></code></pre><p class="action-help">命令供你在專案根目錄操作；本頁不會執行命令或連線到叢集。</p></section>
+      </div>
+      <aside class="boundary"><span class="boundary-symbol" aria-hidden="true">i</span><div><strong>這一章的邊界</strong><p id="boundary"></p></div></aside>
+      <details class="preparation"><summary>操作前準備與結束方式 <span aria-hidden="true">＋</span></summary><p id="setup"></p><p>結束時先停止自己的 port-forward，再依本課教學使用 <code id="stop-command"></code>。既有 DB、帳號、憑證與 ownership 依教學保留。</p></details>
+      <section class="real-material"><div><span class="small-label">FROM EXPLANATION TO EVIDENCE</span><h2>看懂流程，再對照真實操作。</h2><p>本頁用可重播的機械模型說明行為。部署結果仍須依當次實際執行核對。</p></div><div class="evidence-links"><a href="../media/m5-demo.html">M5 真實操作剪輯 <span>19 張操作截圖 · 約 1:54 ↗</span></a><a href="../media/m5-rollback-trace.html">實際回滾 trace <span>Hub／Agent／Operator 關聯 ↗</span></a><a href="../validation.md">驗證方式與範圍 <span>各階段命令、證據與限制 ↗</span></a></div></section>
+      <footer><span>HugoFleet <span class="footer-separator">/</span> M0—M5 ANIMATED FIELD GUIDE</span><span>Made with <a href="https://github.com/wheresryan22/anatomy">Anatomy</a> · <a href="README.md">來源與使用說明</a></span></footer>
+    </main>
+  </div>
+  <p class="sr-only" id="announcement" role="status" aria-live="polite" aria-atomic="true"></p>
+  <noscript><p>請開啟 JavaScript 播放動畫。操作教學仍可直接閱讀：<a href="../../stages/m0/README.md">M0</a>、<a href="../../stages/m1/README.md">M1</a>、<a href="../../stages/m2/README.md">M2</a>、<a href="../../stages/m3/README.md">M3</a>、<a href="../../stages/m4/README.md">M4</a>、<a href="../../stages/m5/README.md">M5</a>。</p></noscript>
+  <script>/* PLAYER_DATA */
+/* PLAYER_MODEL */
+/* PLAYER_SCRIPT */</script>
+</body>
+</html>
