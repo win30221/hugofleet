@@ -184,24 +184,31 @@ func (s *Store) AuditEvents(ctx context.Context, tenant string, limit int) ([]do
 	return items, rows.Err()
 }
 func (s *Store) VisibleTenants(ctx context.Context) ([]domain.Tenant, error) {
+	p, err := s.VisibleTenantsPage(ctx, "", 100)
+	return p.Items, err
+}
+func (s *Store) VisibleTenantsPage(ctx context.Context, after string, limit int) (domain.Page[domain.Tenant], error) {
 	u, err := s.CurrentUser(ctx)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.Tenant]{}, err
 	}
-	rows, err := s.db.QueryContext(ctx, "SELECT t.id,t.name,t.slug,t.created_at FROM tenants t WHERE ? OR EXISTS(SELECT 1 FROM tenant_memberships m WHERE m.tenant_id=t.id AND m.user_id=?) ORDER BY t.id LIMIT 100", u.PlatformAdmin, u.ID)
+	if err := validatePageLimit(limit); err != nil {
+		return domain.Page[domain.Tenant]{}, err
+	}
+	rows, err := s.db.QueryContext(ctx, "SELECT t.id,t.name,t.slug,t.created_at FROM tenants t WHERE t.id>? AND (? OR EXISTS(SELECT 1 FROM tenant_memberships m WHERE m.tenant_id=t.id AND m.user_id=?)) ORDER BY t.id LIMIT ?", after, u.PlatformAdmin, u.ID, limit+1)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.Tenant]{}, err
 	}
 	defer rows.Close()
 	items := []domain.Tenant{}
 	for rows.Next() {
 		var t domain.Tenant
 		if err = rows.Scan(&t.ID, &t.Name, &t.Slug, &t.CreatedAt); err != nil {
-			return nil, err
+			return domain.Page[domain.Tenant]{}, err
 		}
 		items = append(items, t)
 	}
-	return items, rows.Err()
+	return boundedPage(items, limit, func(t domain.Tenant) string { return t.ID }), rows.Err()
 }
 func (s *Store) VisibleClusters(ctx context.Context) ([]domain.Cluster, error) {
 	u, err := s.CurrentUser(ctx)
@@ -349,23 +356,30 @@ func (s *Store) ActivateTenant(ctx context.Context, name, ownerID string, p doma
 	return tx.Commit()
 }
 func (s *Store) Members(ctx context.Context, tenant string) ([]domain.Membership, error) {
+	p, err := s.MembersPage(ctx, tenant, "", 100)
+	return p.Items, err
+}
+func (s *Store) MembersPage(ctx context.Context, tenant, after string, limit int) (domain.Page[domain.Membership], error) {
 	if _, err := s.Authorize(ctx, tenant, "Viewer"); err != nil {
-		return nil, err
+		return domain.Page[domain.Membership]{}, err
 	}
-	rows, err := s.db.QueryContext(ctx, "SELECT u.id,u.email,m.role FROM tenant_memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=? ORDER BY u.id LIMIT 100", tenant)
+	if err := validatePageLimit(limit); err != nil {
+		return domain.Page[domain.Membership]{}, err
+	}
+	rows, err := s.db.QueryContext(ctx, "SELECT u.id,u.email,m.role FROM tenant_memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=? AND u.id>? ORDER BY u.id LIMIT ?", tenant, after, limit+1)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.Membership]{}, err
 	}
 	defer rows.Close()
 	items := []domain.Membership{}
 	for rows.Next() {
 		var m domain.Membership
 		if err = rows.Scan(&m.UserID, &m.Email, &m.Role); err != nil {
-			return nil, err
+			return domain.Page[domain.Membership]{}, err
 		}
 		items = append(items, m)
 	}
-	return items, rows.Err()
+	return boundedPage(items, limit, func(m domain.Membership) string { return m.UserID }), rows.Err()
 }
 func (s *Store) SetMember(ctx context.Context, tenant, userID, role string) error {
 	if userID == "" || (role != "" && !domain.ValidRole(role)) {
@@ -414,23 +428,30 @@ func (s *Store) SetMember(ctx context.Context, tenant, userID, role string) erro
 	return tx.Commit()
 }
 func (s *Store) Users(ctx context.Context) ([]domain.User, error) {
+	p, err := s.UsersPage(ctx, "", 100)
+	return p.Items, err
+}
+func (s *Store) UsersPage(ctx context.Context, after string, limit int) (domain.Page[domain.User], error) {
 	if _, err := s.Authorize(ctx, "", "PlatformAdmin"); err != nil {
-		return nil, err
+		return domain.Page[domain.User]{}, err
 	}
-	rows, err := s.db.QueryContext(ctx, "SELECT id,issuer,oidc_subject,email,platform_admin,created_at FROM users ORDER BY id LIMIT 100")
+	if err := validatePageLimit(limit); err != nil {
+		return domain.Page[domain.User]{}, err
+	}
+	rows, err := s.db.QueryContext(ctx, "SELECT id,issuer,oidc_subject,email,platform_admin,created_at FROM users WHERE id>? ORDER BY id LIMIT ?", after, limit+1)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.User]{}, err
 	}
 	defer rows.Close()
 	items := []domain.User{}
 	for rows.Next() {
 		var u domain.User
 		if err = rows.Scan(&u.ID, &u.Issuer, &u.Subject, &u.Email, &u.PlatformAdmin, &u.CreatedAt); err != nil {
-			return nil, err
+			return domain.Page[domain.User]{}, err
 		}
 		items = append(items, u)
 	}
-	return items, rows.Err()
+	return boundedPage(items, limit, func(u domain.User) string { return u.ID }), rows.Err()
 }
 
 func RandomSecret() string {

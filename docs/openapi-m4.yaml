@@ -86,9 +86,14 @@ paths:
   /api/v1/users:
     get:
       operationId: m4KnownUsers
+      parameters:
+        - {$ref: './openapi.yaml#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/After'}
       responses:
         '200':
           description: Platform Admin only; identities enrolled through verified OIDC login
+          headers:
+            Link: {$ref: '#/components/headers/NextPage'}
           content:
             application/json:
               schema: {type: array, items: {$ref: '#/components/schemas/User'}}
@@ -96,9 +101,14 @@ paths:
   /api/v1/tenants:
     get:
       operationId: m4VisibleTenants
+      parameters:
+        - {$ref: './openapi.yaml#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/After'}
       responses:
         '200':
-          description: Platform Admin sees all tenants; other users see only current memberships
+          description: ID-sorted page; Platform Admin can page through all tenants, other users only their current memberships
+          headers:
+            Link: {$ref: '#/components/headers/NextPage'}
           content:
             application/json:
               schema: {type: array, items: {$ref: './openapi.yaml#/components/schemas/Tenant'}}
@@ -119,7 +129,7 @@ paths:
               required: [slug, name, cluster_id, owner_id]
               properties:
                 slug: {$ref: '#/components/schemas/TenantSlug'}
-                name: {type: string, minLength: 1, maxLength: 100, description: Trimmed display name without CR/LF/NUL}
+                name: {type: string, minLength: 1, maxLength: 100, description: Trimmed display name of at most 100 Unicode code points without CR/LF/NUL}
                 cluster_id: {type: string, description: Registered connected Worker identity}
                 owner_id: {type: string, format: uuid, description: User enrolled through verified OIDC login with a nonempty display email; email is not an identity or role key}
       responses:
@@ -151,16 +161,21 @@ paths:
       - {$ref: '#/components/parameters/TenantId'}
     get:
       operationId: m4TenantMembers
+      parameters:
+        - {$ref: './openapi.yaml#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/After'}
       responses:
         '200':
           description: Viewer or higher within the tenant
+          headers:
+            Link: {$ref: '#/components/headers/NextPage'}
           content:
             application/json:
               schema: {type: array, items: {$ref: '#/components/schemas/Membership'}}
         default: {$ref: '#/components/responses/Error'}
     post:
       operationId: m4SetMember
-      description: Owner or Platform Admin; empty role revokes membership. The last Owner cannot be removed. Revocation applies before idempotency replay checks on subsequent mutations.
+      description: Owner or Platform Admin; explicit empty string role revokes membership. Missing or null role is rejected with 400. The last Owner cannot be removed. Revocation applies before idempotency replay checks on subsequent mutations.
       parameters:
         - {$ref: '#/components/parameters/Origin'}
         - {$ref: '#/components/parameters/CSRF'}
@@ -221,9 +236,10 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [items, next_after]
                 properties:
                   items: {type: array, items: {$ref: './openapi.yaml#/components/schemas/Application'}}
-                  next_after: {type: string}
+                  next_after: {type: string, description: Exclusive ID cursor; empty at end of list}
         default: {$ref: '#/components/responses/Error'}
     post:
       operationId: m4CreateApp
@@ -334,6 +350,11 @@ components:
       name: hf_session
       description: Opaque verified platform session; raw OIDC tokens and Bearer headers are not accepted
   parameters:
+    After:
+      name: after
+      in: query
+      schema: {type: string}
+      description: Exclusive ID cursor. Follow the response Link header with rel=next; absent at the end. Default limit 50, maximum 100.
     TenantId:
       name: tenantId
       in: path
@@ -351,6 +372,10 @@ components:
       required: true
       schema: {type: string}
       description: Exact current session value from GET /api/v1/auth/me; form UI sends its csrf field instead
+  headers:
+    NextPage:
+      description: 'Relative URL for the next ID-sorted page, e.g. </api/v1/users?after=UUID&limit=50>; rel="next". Absent at the end. Body remains an array.'
+      schema: {type: string}
   responses:
     Error:
       description: '400 invalid input, 401 invalid session, 403 authorization/Origin/CSRF, 404 absent, 409 conflict/ownership, 422 quota precheck, 503 offline, 500 internal'

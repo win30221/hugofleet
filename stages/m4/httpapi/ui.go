@@ -17,6 +17,8 @@ import (
 
 type page struct {
 	View, ClusterFilter, NextURL                                string
+	NextTenantsURL, NextUsersURL, NextMembersURL                string
+	CurrentTenantOnPage                                         bool
 	Overview                                                    *repository.Overview
 	AppSpecs                                                    map[string]platform.ApplicationSpec
 	Traces                                                      []observability.Record
@@ -71,19 +73,30 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var err error
-	if p.Tenants, err = s.Service.Store.VisibleTenants(ctx); err != nil {
+	tenants, err := s.Service.Store.VisibleTenantsPage(ctx, r.URL.Query().Get("tenants_after"), 100)
+	if err != nil {
 		s.fail(w, r, err)
 		return
+	}
+	p.Tenants = tenants.Items
+	p.NextTenantsURL = directoryPageURL(r, "tenants_after", tenants.NextAfter)
+	for _, tenant := range p.Tenants {
+		if tenant.ID == p.TenantID {
+			p.CurrentTenantOnPage = true
+		}
 	}
 	if p.Clusters, err = s.Service.Store.VisibleClusters(ctx); err != nil {
 		s.fail(w, r, err)
 		return
 	}
 	if session(r).User.PlatformAdmin {
-		if p.Users, err = s.Service.Store.Users(ctx); err != nil {
+		users, err := s.Service.Store.UsersPage(ctx, r.URL.Query().Get("users_after"), 100)
+		if err != nil {
 			s.fail(w, r, err)
 			return
 		}
+		p.Users = users.Items
+		p.NextUsersURL = directoryPageURL(r, "users_after", users.NextAfter)
 	}
 	if p.TenantID != "" {
 		if p.Role, err = s.Service.Store.Authorize(ctx, p.TenantID, "Viewer"); err != nil {
@@ -96,14 +109,20 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, r, err)
 			return
 		}
-		if p.Members, err = s.Service.Store.Members(ctx, p.TenantID); err != nil {
+		members, err := s.Service.Store.MembersPage(ctx, p.TenantID, r.URL.Query().Get("members_after"), 100)
+		if err != nil {
 			s.fail(w, r, err)
 			return
 		}
-		if p.Apps, err = s.Service.Store.ScopedApps(ctx, p.TenantID, "", 100); err != nil {
+		p.Members = members.Items
+		p.NextMembersURL = directoryPageURL(r, "members_after", members.NextAfter)
+		apps, err := s.Service.Store.ScopedAppsPage(ctx, p.TenantID, r.URL.Query().Get("after"), 100)
+		if err != nil {
 			s.fail(w, r, err)
 			return
 		}
+		p.Apps = apps.Items
+		p.NextURL = directoryPageURL(r, "after", apps.NextAfter)
 		if p.Audit, err = s.Service.Store.AuditEvents(ctx, p.TenantID, 30); err != nil {
 			s.fail(w, r, err)
 			return
@@ -157,14 +176,15 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 		}
 		if p.View == "applications" {
 			var e error
-			p.Apps, e = s.Service.Store.DashboardApps(ctx, p.TenantID, p.ClusterFilter, r.URL.Query().Get("after"), 50)
+			p.Apps, e = s.Service.Store.DashboardApps(ctx, p.TenantID, p.ClusterFilter, r.URL.Query().Get("after"), 51)
 			if e != nil {
 				s.fail(w, r, e)
 				return
 			}
-			if len(p.Apps) == 50 {
-				q := url.Values{"tenant": {p.TenantID}, "cluster": {p.ClusterFilter}, "after": {p.Apps[49].ID}}
-				p.NextURL = "/applications?" + q.Encode()
+			p.NextURL = ""
+			if len(p.Apps) > 50 {
+				p.Apps = p.Apps[:50]
+				p.NextURL = directoryPageURL(r, "after", p.Apps[49].ID)
 			}
 		}
 		p.AppSpecs = map[string]platform.ApplicationSpec{}
@@ -189,6 +209,16 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, p)
 }
 
+func directoryPageURL(r *http.Request, key, after string) string {
+	if after == "" {
+		return ""
+	}
+	q := r.URL.Query()
+	q.Set(key, after)
+	q.Del("poll")
+	return r.URL.EscapedPath() + "?" + q.Encode()
+}
+
 // A maximum of thirty HTML refreshes; editable forms and confirmation pages are
 // never refreshed. All repeated requests revalidate session and membership.
 func (s *Server) refresh(w http.ResponseWriter, r *http.Request) {
@@ -197,7 +227,7 @@ func (s *Server) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := url.Values{}
-	for _, key := range []string{"tenant", "cluster", "after", "operation"} {
+	for _, key := range []string{"tenant", "cluster", "after", "operation", "tenants_after", "users_after", "members_after"} {
 		if v := r.URL.Query().Get(key); v != "" {
 			q.Set(key, v)
 		}

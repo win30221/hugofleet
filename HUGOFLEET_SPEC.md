@@ -60,7 +60,7 @@
 
 - `POST /quote` 接受 `amount_cents`、`customer_tier`、`coupon_code`，用**整數分**計算最終價格。
 - 示範規則：`vip` 打九折，`SAVE100` 再減 10,000 分（即 100 元），最低為 0。
-- M0 輸入契約：`amount_cents` 必填且為 0–1,000,000,000,000 的整數；`customer_tier` 必須為 `standard` 或 `vip`；`coupon_code` 可省略／空字串或為 `SAVE100`，其他值拒絕。
+- M0 輸入契約：`amount_cents` 必填且為 0–1,000,000,000,000 的整數；`customer_tier` 必須為 `standard` 或 `vip`；`coupon_code` 可省略／空字串或為 `SAVE100`，其他值拒絕，明確傳入 null 回 400。
 - VIP 計算為 `floor(amount_cents * 9 / 10)`，先向下取整到分再折抵折價券；101 分的 VIP 價格為 90 分；20,000 分加 VIP + SAVE100 的結果為 8,000 分。
 - `/quote` 只接受 `application/json`、最多 4 KiB 且單一 JSON 文件；未知欄位、無效 JSON、負數、超限、非整數輸入須有明確錯誤回應。
 - `GET /healthz`、`GET /readyz`、`GET /version`。
@@ -400,6 +400,7 @@ API prefix：`/api/v1`，HTTP JSON；所有非健康檢查 API 都必須有清�
 {
   "name": "pricing-api",
   "cluster_id": "hugofleet-a",
+  "expected_desired_revision": 0,
   "image": "pricing-api:v1",
   "replicas": 1,
   "port": 8080,

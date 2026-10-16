@@ -28,7 +28,7 @@ make docs-check
 |---|---|
 | Markdown 本機連結 | 根 README／AGENTS／SPEC、docs／stages／scripts／tools／deploy 下的 Markdown，核對檔案／目錄存在與 ATX 標題的章節連結 |
 | Bash 範例 | 對 bash／sh fenced code block 使用 bash -n，檢查語法 |
-| 建立應用 JSON | M2 create-app、M3 deploy-a／b，按 Go 型別解碼、拒絕未知欄位與檢查初始 revision／spec |
+| 建立應用 JSON | M2 create-app、M3 deploy-a／b 與規格 §7.1，按 Go 型別解碼、拒絕未知欄位與檢查初始 revision／spec |
 
 章節檢查支援本專案使用的 `#` 標題、中文與重複標題，忽略 fenced code block 裡的標題。它不請求外部網站、不執行範例命令，也不能證明 kind／Docker／TLS／rollout 可用；文件維護仍需閱讀核對。不要把 docs-check PASS 寫成各階段 Demo 已通過。
 

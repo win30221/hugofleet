@@ -19,6 +19,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -104,12 +105,32 @@ func (s *Server) Handler() http.Handler {
 		s.result(w, r, v, err)
 	})
 	mux.HandleFunc("GET /api/v1/users", func(w http.ResponseWriter, r *http.Request) {
-		v, err := s.Service.Store.Users(r.Context())
-		s.result(w, r, v, err)
+		limit, err := pageLimit(r)
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		v, err := s.Service.Store.UsersPage(r.Context(), r.URL.Query().Get("after"), limit)
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		pageLink(w, r, v.NextAfter)
+		respond(w, 200, v.Items)
 	})
 	mux.HandleFunc("GET /api/v1/tenants", func(w http.ResponseWriter, r *http.Request) {
-		v, err := s.Service.Store.VisibleTenants(r.Context())
-		s.result(w, r, v, err)
+		limit, err := pageLimit(r)
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		v, err := s.Service.Store.VisibleTenantsPage(r.Context(), r.URL.Query().Get("after"), limit)
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		pageLink(w, r, v.NextAfter)
+		respond(w, 200, v.Items)
 	})
 	mux.HandleFunc("POST /api/v1/tenants", s.activate)
 	mux.HandleFunc("GET /api/v1/tenants/{tenant}/quota", func(w http.ResponseWriter, r *http.Request) {
@@ -117,8 +138,18 @@ func (s *Server) Handler() http.Handler {
 		s.result(w, r, v, err)
 	})
 	mux.HandleFunc("GET /api/v1/tenants/{tenant}/members", func(w http.ResponseWriter, r *http.Request) {
-		v, err := s.Service.Store.Members(r.Context(), r.PathValue("tenant"))
-		s.result(w, r, v, err)
+		limit, err := pageLimit(r)
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		v, err := s.Service.Store.MembersPage(r.Context(), r.PathValue("tenant"), r.URL.Query().Get("after"), limit)
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		pageLink(w, r, v.NextAfter)
+		respond(w, 200, v.Items)
 	})
 	mux.HandleFunc("POST /api/v1/tenants/{tenant}/members", s.member)
 	auditHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +169,7 @@ func (s *Server) Handler() http.Handler {
 			s.fail(w, r, err)
 			return
 		}
-		v, err := s.Service.Store.ScopedApps(r.Context(), r.PathValue("tenant"), r.URL.Query().Get("after"), limit)
+		v, err := s.Service.Store.ScopedAppsPage(r.Context(), r.PathValue("tenant"), r.URL.Query().Get("after"), limit)
 		s.result(w, r, v, err)
 	})
 	mux.HandleFunc("GET /api/v1/tenants/{tenant}/apps/{app}", func(w http.ResponseWriter, r *http.Request) {
@@ -376,7 +407,7 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 			code, message, status = "INTERNAL", "audit recording failed", 500
 		}
 	}
-	if strings.HasPrefix(r.URL.Path, "/api/") {
+	if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/readyz" || r.URL.Path == "/healthz" {
 		respond(w, status, map[string]any{"error": map[string]string{"code": code, "message": message, "request_id": actor.RequestID}})
 		return
 	}
@@ -417,6 +448,18 @@ func pageLimit(r *http.Request) (int, error) {
 		return 0, domain.Problem("INVALID_ARGUMENT", "limit must be 1..100")
 	}
 	return n, nil
+}
+
+// Array endpoints preserve their response body and expose the cursor in Link.
+func pageLink(w http.ResponseWriter, r *http.Request, after string) {
+	if after == "" {
+		return
+	}
+	q := url.Values{"after": {after}}
+	if limit := r.URL.Query().Get("limit"); limit != "" {
+		q.Set("limit", limit)
+	}
+	w.Header().Set("Link", "<"+r.URL.EscapedPath()+"?"+q.Encode()+">; rel=\"next\"")
 }
 func (s *Server) accepted(w http.ResponseWriter, r *http.Request, o domain.Accepted, err error) {
 	if err != nil {
@@ -489,8 +532,8 @@ func (s *Server) activate(w http.ResponseWriter, r *http.Request) {
 }
 
 type memberChange struct {
-	UserID string `json:"user_id"`
-	Role   string `json:"role"`
+	UserID string  `json:"user_id"`
+	Role   *string `json:"role"`
 }
 
 func (s *Server) member(w http.ResponseWriter, r *http.Request) {
@@ -499,7 +542,11 @@ func (s *Server) member(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	if err := s.Service.Store.SetMember(r.Context(), r.PathValue("tenant"), v.UserID, v.Role); err != nil {
+	if v.Role == nil {
+		s.fail(w, r, domain.Problem("INVALID_ARGUMENT", "role is required and must be a string; use an empty string to revoke membership"))
+		return
+	}
+	if err := s.Service.Store.SetMember(r.Context(), r.PathValue("tenant"), v.UserID, *v.Role); err != nil {
 		s.fail(w, r, err)
 		return
 	}

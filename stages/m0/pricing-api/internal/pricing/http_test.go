@@ -31,6 +31,7 @@ func TestQuoteHTTP(t *testing.T) {
 		{"unknown field", `{"amount_cents":100,"customer_tier":"standard","extra":1}`, "application/json", 400},
 		{"unknown tier", `{"amount_cents":100,"customer_tier":"gold"}`, "application/json", 422},
 		{"unknown coupon", `{"amount_cents":100,"customer_tier":"vip","coupon_code":"BAD"}`, "application/json", 422},
+		{"null coupon", `{"amount_cents":20000,"customer_tier":"vip","coupon_code":null}`, "application/json", 400},
 		{"invalid JSON", `{`, "application/json", 400},
 		{"null document", `null`, "application/json", 422},
 		{"array", `[]`, "application/json", 400},
@@ -70,6 +71,23 @@ func TestQuoteHTTP(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestQuoteHTTPCouponOmittedAndEmpty(t *testing.T) {
+	handler, err := NewHandler(Config{Version: "v1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, suffix := range []string{"", `,"coupon_code":""`} {
+		r := httptest.NewRequest("POST", "/quote", strings.NewReader(`{"amount_cents":20000,"customer_tier":"vip"`+suffix+`}`))
+		r.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		var quote Quote
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &quote) != nil || quote.FinalAmountCents != 18000 || quote.CouponDiscountCents != 0 {
+			t.Fatalf("optional coupon %s: HTTP %d %s", suffix, w.Code, w.Body.String())
+		}
 	}
 }
 

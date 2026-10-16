@@ -6,6 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"strings"
+	"unicode/utf8"
 )
 
 // The immutable tenant ID is its DNS slug. No client-supplied namespace exists.
@@ -96,5 +97,6 @@ type AuditEvent struct {
 
 func ValidRole(role string) bool { return role == "Owner" || role == "Developer" || role == "Viewer" }
 func ValidDisplayName(name string) bool {
-	return len(name) > 0 && len(name) <= 100 && strings.TrimSpace(name) == name && !strings.ContainsAny(name, "\r\n\x00")
+	length := utf8.RuneCountInString(name)
+	return utf8.ValidString(name) && length > 0 && length <= 100 && strings.TrimSpace(name) == name && !strings.ContainsAny(name, "\r\n\x00")
 }

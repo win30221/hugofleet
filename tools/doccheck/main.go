@@ -56,20 +56,38 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		var req domain.DeployRequest
-		d := json.NewDecoder(bytes.NewReader(raw))
-		d.DisallowUnknownFields()
-		if err = d.Decode(&req); err != nil {
+		if err = validateCreateExample(p, raw); err != nil {
 			return err
 		}
-		if req.ExpectedDesiredRevision == nil || *req.ExpectedDesiredRevision != 0 || domain.ValidateName(req.Name) != nil {
-			return fmt.Errorf("invalid create example %s", p)
-		}
-		if _, err = domain.DefaultPolicy().Spec(req); err != nil {
-			return fmt.Errorf("invalid application spec %s: %w", p, err)
-		}
 	}
-	fmt.Printf("PASS %d Markdown files, %d local file/section links, %d shell example blocks, three typed deployment examples\n", len(paths), linkCount, blockCount)
+	spec, err := os.ReadFile("HUGOFLEET_SPEC.md")
+	if err != nil {
+		return err
+	}
+	example := regexp.MustCompile("(?s)### 7\\.1 [^\\n]*\\r?\\n.*?```json\\r?\\n(.*?)\\r?\\n```").FindSubmatch(spec)
+	if len(example) != 2 {
+		return fmt.Errorf("missing specification section 7.1 create example")
+	}
+	if err = validateCreateExample("HUGOFLEET_SPEC.md section 7.1", example[1]); err != nil {
+		return err
+	}
+	fmt.Printf("PASS %d Markdown files, %d local file/section links, %d shell example blocks, four typed deployment examples\n", len(paths), linkCount, blockCount)
+	return nil
+}
+
+func validateCreateExample(path string, raw []byte) error {
+	var req domain.DeployRequest
+	d := json.NewDecoder(bytes.NewReader(raw))
+	d.DisallowUnknownFields()
+	if err := d.Decode(&req); err != nil {
+		return fmt.Errorf("invalid create example %s: %w", path, err)
+	}
+	if req.ExpectedDesiredRevision == nil || *req.ExpectedDesiredRevision != 0 || req.ClusterID == "" || domain.ValidateName(req.Name) != nil {
+		return fmt.Errorf("invalid create example %s", path)
+	}
+	if _, err := domain.DefaultPolicy().Spec(req); err != nil {
+		return fmt.Errorf("invalid application spec %s: %w", path, err)
+	}
 	return nil
 }
 

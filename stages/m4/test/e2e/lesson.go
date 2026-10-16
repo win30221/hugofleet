@@ -314,9 +314,9 @@ func (s *suite) recovery() {
 		s.api("admin", "GET", "/api/v1/clusters", "", nil, 200, &items)
 		return len(items) == 2 && items[0].State == "CONNECTED" && items[1].State == "CONNECTED"
 	})
-	var apps []domain.Application
+	var apps domain.Page[domain.Application]
 	s.api("developer-a", "GET", "/api/v1/tenants/team-a/apps", "", nil, 200, &apps)
-	if len(apps) < 1 {
+	if len(apps.Items) < 1 {
 		s.t.Fatal("Hub restart lost scoped application history/session")
 	}
 	s.t.Log(fmt.Sprintf("PASS actual B offline/reconnect/service continuity; Hub %s stopped/started with original DB/session and autonomous Worker drift repair", hub))

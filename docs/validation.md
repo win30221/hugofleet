@@ -10,7 +10,7 @@ HugoFleet 的驗證涵蓋 Go Unit、race、真實 envtest、Dex OIDC、Helm CLI 
 
 | 這次改了什麼 | 先執行 | 能確認什麼 |
 |---|---|---|
-| Markdown／範例文字 | `make docs-check` | 本機檔案／章節連結、Bash 語法與三份型別化 JSON |
+| Markdown／範例文字 | `make docs-check` | 本機檔案／章節連結、Bash 語法、三份 JSON 檔與規格 §7.1 的型別化建立範例 |
 | 某階段 Go 程式 | `make mN-test`、`make mN-build`，N 換成階段數字 | 該課單元測試與主機編譯 |
 | M1 API／Controller | 準備 operator-tools／envtest，再 `make verify-generated test-integration` | 生成檔與真實 API server／etcd 行為 |
 | Proto | 準備 proto-tools，再 `make proto-check` | 協定生成碼是否一致 |

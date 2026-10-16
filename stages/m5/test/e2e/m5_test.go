@@ -144,9 +144,9 @@ func (s *suite) dashboard() {
 	for _, path := range []string{"/metrics", "/traces", "/api/v1/traces", "/applications?tenant=team-b"} {
 		s.api("viewer-a", "GET", path, "", nil, 403, nil)
 	}
-	var apps []domain.Application
+	var apps domain.Page[domain.Application]
 	s.api("owner-a", "GET", "/api/v1/tenants/team-a/apps", "", nil, 200, &apps)
-	for _, a := range apps {
+	for _, a := range apps.Items {
 		if a.Name != "pricing-api" || a.ClusterID != s.a {
 			continue
 		}

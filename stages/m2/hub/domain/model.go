@@ -97,6 +97,11 @@ type Accepted struct {
 	Revision      int64  `json:"revision"`
 	State         string `json:"state"`
 }
+
+type Page[T any] struct {
+	Items     []T    `json:"items"`
+	NextAfter string `json:"next_after"`
+}
 type DeployRequest struct {
 	Name                    string                        `json:"name,omitempty"`
 	ClusterID               string                        `json:"cluster_id,omitempty"`

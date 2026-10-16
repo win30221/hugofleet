@@ -513,7 +513,7 @@ make m0-up
 |---|---|
 | amount_cents | 必填，整數，0–1,000,000,000,000 |
 | customer_tier | 必填，standard／vip，區分大小寫 |
-| coupon_code | 可省略、空字串或 SAVE100 |
+| coupon_code | 可省略、空字串或 SAVE100；明確傳入 null 回 400 |
 
 VIP 先以整數分計算九折並向下取整，再用 SAVE100 最多折抵 10,000 分，最低零。例如 101 分 VIP 為 90 分；100 分 VIP 加 SAVE100 為零。
 

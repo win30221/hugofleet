@@ -56,8 +56,12 @@ func NewHandler(config Config) (http.Handler, error) {
 		defer r.Body.Close()
 		decoder := json.NewDecoder(r.Body)
 		decoder.DisallowUnknownFields()
-		var request QuoteRequest
-		if err := decoder.Decode(&request); err != nil {
+		var body struct {
+			AmountCents  *int64          `json:"amount_cents"`
+			CustomerTier string          `json:"customer_tier"`
+			CouponCode   json.RawMessage `json:"coupon_code"`
+		}
+		if err := decoder.Decode(&body); err != nil {
 			writeDecodeError(w, err)
 			return
 		}
@@ -66,6 +70,15 @@ func NewHandler(config Config) (http.Handler, error) {
 		if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
 			writeDecodeError(w, err)
 			return
+		}
+		request := QuoteRequest{AmountCents: body.AmountCents, CustomerTier: body.CustomerTier}
+		if len(body.CouponCode) > 0 {
+			var coupon *string
+			if err := json.Unmarshal(body.CouponCode, &coupon); err != nil || coupon == nil {
+				writeDecodeError(w, errors.New("coupon_code must be a string"))
+				return
+			}
+			request.CouponCode = *coupon
 		}
 		quote, err := Calculate(request)
 		if err != nil {

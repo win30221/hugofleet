@@ -21,6 +21,12 @@
 
 精確 REST／登入契約見 [M4 OpenAPI](../../../docs/openapi-m4.yaml)，共用 application／release／operation 回應模型引用 [M2／M3 OpenAPI](../../../docs/openapi.yaml)。M4 的管理 API 要求 `hf_session`，變更另要求 Origin／X-CSRF-Token；舊模式的 Bearer／無認證例外不適用。配額端點回傳已核對的 hard／defaults profile，並非即時 usage。
 
+應用清單回傳 `{items, next_after}`，最後一頁的 `next_after` 為空字串。租戶、使用者與成員清單保留陣列回應，接受 `limit`（預設 50、最多 100）與 exclusive ID `after`；有下一頁時回傳 `Link: <相對 URL>; rel="next"`，最後一頁省略 Link。各頁重新檢查目前 session／角色。M4／M5 頁面提供租戶、Owner 候選使用者與成員的下一頁入口，每頁最多 100 筆。
+
+租戶頁的應用清單每頁最多 100 筆，M5 應用總覽每頁最多 50 筆（包含保留的刪除履歷）。兩者以 `after` 游標翻頁，保留目前篩選條件，只有確實存在更多資料時才顯示下一頁。
+
+租戶顯示名稱最多 100 個 Unicode code points。成員變更必須明確提供字串 `role`，省略或 null 回 400，空字串才代表撤銷。公開 `/readyz` 在 Worker 離線時回傳 503 與標準 JSON error／request_id；健康檢查不要求登入。
+
 每次請求有新的 request_id 與十秒 context。HTTP LocalDemo 核對精確 Host／本機或 Docker gateway；正常模式要求 TLS。所有非公開入口從 SQLite 查驗不透明 session，再以受信任 actor context 呼叫 Store。安全 headers 包含 no-store、nosniff、CSP；公開 OAuth 頁面使用 Referrer-Policy: no-referrer，受保護頁面使用 same-origin，讓瀏覽器 HTML POST 保留同源 Origin。缺少／null／外站 Origin 與錯誤 CSRF 仍拒絕；audit 不存 Token／body／callback query。
 
 讀取透過 scoped tenants／clusters／apps／detail／operation／audit；變更在 Store 交易內重新授權，且在 idempotency lookup 之前檢查 membership。Viewer 唯讀；Developer 可以 deploy／release／rollback；Owner 增加 delete／members；Platform Admin 可啟用已 bootstrap 的 profile。登入 claims、未受信任的角色 header 或部署欄位不授予權限；角色變更只能經過已授權 Owner／Admin 的 membership 入口。跨租戶指定 app ID 不會繞過授權。
